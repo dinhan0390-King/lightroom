@@ -1,24 +1,22 @@
 {
   "expo": {
-    "name": "expo-lightroom",
-    "slug": "expo-lightroom",
+    "name": "Bé Picture",
+    "slug": "be-picture",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bepicture.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Bé Picture cần truy cập thư viện ảnh để chỉnh sửa.",
+        "NSPhotoLibraryAddUsageDescription": "Bé Picture cần quyền lưu ảnh đã chỉnh sửa vào Album."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#1A1A1A"
       }
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     }
   }
 }
