@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bé Picture - Chỉnh Màu Ảnh</title>
+  
+  <!-- Cấu hình PWA cho iOS iPhone -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Bé Picture">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#121212">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #121212;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding-top: env(safe-area-inset-top, 20px);
+      padding-bottom: env(safe-area-inset-bottom, 10px);
+    }
+    
+    /* HEADER */
+    header {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid #222;
+      background: #121212;
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      background: #001d26;
+      border: 1px solid #00c0ff;
+      color: #00c0ff;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn {
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      outline: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-secondary {
+      background: #222;
+      color: #ccc;
+      border: 1px solid #333;
+    }
+    .btn-secondary.active {
+      border-color: #00c0ff;
+      background: #002833;
+      color: #00c0ff;
+    }
+    .btn-primary {
+      background: #2a2a2a;
+      color: #fff;
+    }
+    .btn-save {
+      background: #007aff;
+      color: #fff;
+      font-weight: bold;
+    }
+
+    /* PREVIEW VIEWPORT */
+    #viewport {
+      flex: 1;
+      position: relative;
+      background: #0a0a0a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    #glcanvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 4px 25px rgba(0,0,0,0.8);
+    }
+    #empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .empty-icon {
+      font-size: 54px;
+      margin-bottom: 12px;
+    }
+    .empty-title {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .empty-sub {
+      font-size: 13px;
+      color: #777;
+      max-width: 280px;
+      line-height: 18px;
+    }
+
+    /* BOTTOM CONTROLS */
+    #controls {
+      background: #181818;
+      border-top: 1px solid #282828;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 8px;
+    }
+    .preset-bar-title {
+      font-size: 10px;
+      font-weight: bold;
+      color: #666;
+      letter-spacing: 1px;
+      padding: 10px 16px 4px;
+    }
+    .preset-scroll {
+      display: flex;
+      overflow-x: auto;
+      padding: 4px 12px 6px;
+      gap: 8px;
+      scrollbar-width: none;
+    }
+    .preset-scroll::-webkit-scrollbar { display: none; }
+    .preset-pill {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: #202020;
+      border: 1.5px solid #2d2d2d;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #aaa;
+      cursor: pointer;
+    }
+    .preset-pill.active {
+      background: #282828;
+      color: #fff;
+      font-weight: bold;
+    }
+    .preset-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .preset-desc {
+      font-size: 11px;
+      color: #888;
+      font-style: italic;
+      padding: 0 16px 8px;
+    }
+
+    /* SLIDER SECTION */
+    .slider-box {
+      padding: 6px 16px 8px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 6px;
+      color: #ccc;
+    }
+    .slider-val {
+      font-weight: bold;
+      color: #00c0ff;
+    }
+    input[type=range] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #333;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #00c0ff;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    }
+
+    /* TABS */
+    .tab-bar {
+      display: flex;
+      overflow-x: auto;
+      padding: 2px 12px;
+      gap: 6px;
+      scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: #222;
+      color: #777;
+      font-size: 12px;
+      cursor: pointer;
+      border: none;
+      flex-shrink: 0;
+    }
+    .tab-btn.active {
+      background: #303030;
+      color: #fff;
+      font-weight: bold;
+      border-bottom: 2px solid #00c0ff;
+    }
+
+    /* SAVE MODAL (Cho iPhone Safari) */
+    #save-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    #save-modal.show { display: flex; }
+    #modal-img {
+      max-width: 85%;
+      max-height: 60%;
+      border-radius: 10px;
+      box-shadow: 0 6px 30px rgba(0,0,0,0.9);
+      margin-bottom: 16px;
+    }
+    .modal-tip {
+      font-size: 15px;
+      color: #00c0ff;
+      font-weight: bold;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    .modal-sub {
+      font-size: 13px;
+      color: #aaa;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .modal-close {
+      background: #333;
+      color: #fff;
+      padding: 10px 24px;
+      border-radius: 20px;
+      font-size: 14px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- HEADER -->
+    <header>
+      <div class="brand">
+        <span class="badge">BP</span>
+        <span class="brand-title">BÉ PICTURE</span>
+      </div>
+      <div class="header-actions">
+        <button id="btn-compare" class="btn btn-secondary" style="display:none;">Giữ xem gốc</button>
+        <button id="btn-pick" class="btn btn-primary">+ Chọn ảnh</button>
+        <button id="btn-save" class="btn btn-save" style="display:none;">Lưu</button>
+      </div>
+    </header>
+
+    <!-- VIEWPORT -->
+    <main id="viewport">
+      <div id="empty-state">
+        <div class="empty-icon">📷</div>
+        <div class="empty-title">Chạm để chọn ảnh từ iPhone</div>
+        <div class="empty-sub">Áp dụng tức thì 6 bộ màu: Nhật Bản mùa hè, Phim Kodak, Teal & Orange, Hàn Quốc...</div>
+      </div>
+      <canvas id="glcanvas" style="display:none;"></canvas>
+    </main>
+
+    <!-- BOTTOM CONTROLS -->
+    <footer id="controls" style="display:none;">
+      <div class="preset-bar-title">CHỌN STYLE MÀU:</div>
+      <div class="preset-scroll" id="preset-list"></div>
+      <div class="preset-desc" id="preset-desc"></div>
+
+      <div class="slider-box">
+        <div class="slider-header">
+          <span id="slider-title">Độ đậm style:</span>
+          <span id="slider-val" class="slider-val">100%</span>
+        </div>
+        <input type="range" id="active-slider" min="0" max="100" value="100">
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="intensity">Cường độ</button>
+        <button class="tab-btn" data-tab="exposure">Phơi sáng</button>
+        <button class="tab-btn" data-tab="contrast">Tương phản</button>
+        <button class="tab-btn" data-tab="temp">Ấm / Lạnh</button>
+      </div>
+    </footer>
+  </div>
+
+  <input type="file" id="file-input" accept="image/*" style="display:none;">
+
+  <!-- MODAL HƯỚNG DẪN LƯU VÀO ALBUM IPHONE -->
+  <div id="save-modal">
+    <div class="modal-tip">🎉 ĐÃ TẠO ẢNH CHẤT LƯỢNG CAO!</div>
+    <img id="modal-img" src="" alt="Edited Photo">
+    <div class="modal-sub">👉 Nhấn giữ vào ảnh trên và chọn <b>"Lưu vào Ảnh" (Save to Photos)</b></div>
+    <button class="modal-close" onclick="document.getElementById('save-modal').classList.remove('show')">Đóng</button>
+  </div>
+
+  <script>
+    // Đăng ký Service Worker để chạy Offline 100%
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    }
+
+    const PRESETS = [
+      { id: 0, tag: '🇯🇵 Mùa hè Nhật', name: 'Japan Summer', desc: 'Trời xanh ngọc Cyan, cây xanh non Anime, nắng ấm Makoto Shinkai', color: '#00c0ff' },
+      { id: 1, tag: '🎞️ Màu Phim Cổ', name: 'Kodak Portra', desc: 'Tone vàng kim ấm áp hoài niệm, da ấm, chất phim cổ điển', color: '#f39c12' },
+      { id: 2, tag: '🎬 Điện Ảnh Cyber', name: 'Teal & Orange', desc: 'Điện ảnh Hollywood: bóng xanh biển sâu, ánh sáng cam rực rỡ', color: '#00e5ff' },
+      { id: 3, tag: '🌲 Rừng Thông Lạnh', name: 'Moody Forest', desc: 'Tone trầm u tối, cây lá xanh rêu trầm, tĩnh lặng và bí ẩn', color: '#27ae60' },
+      { id: 4, tag: '🌸 Hàn Quốc', name: 'Korean Pastel', desc: 'Sáng trong trẻo, da trắng hồng đào, tương phản nhẹ mơ màng', color: '#ff758c' },
+      { id: 5, tag: '🖤 Đen Trắng Noir', name: 'Classic B&W', desc: 'Trắng đen điện ảnh với độ tương phản sâu nghệ thuật', color: '#bdc3c7' }
+    ];
+
+    let currentPresetId = 0;
+    let activeTab = 'intensity';
+    let params = {
+      intensity: 1.0,
+      exposure: 0.0,
+      contrast: 0.0,
+      temp: 0.0,
+      showOriginal: 0.0
+    };
+
+    // Khởi tạo giao diện danh sách Preset
+    const presetListEl = document.getElementById('preset-list');
+    const presetDescEl = document.getElementById('preset-desc');
+
+    function renderPresetList() {
+      presetListEl.innerHTML = '';
+      PRESETS.forEach(p => {
+        const isSelected = p.id === currentPresetId;
+        const pill = document.createElement('div');
+        pill.className = `preset-pill ${isSelected ? 'active' : ''}`;
+        if (isSelected) pill.style.borderColor = p.color;
+        pill.innerHTML = `<span class="preset-dot" style="background:${p.color}"></span>${p.tag}`;
+        pill.onclick = () => selectPreset(p.id);
+        presetListEl.appendChild(pill);
+      });
+      presetDescEl.textContent = PRESETS[currentPresetId].desc;
+    }
+
+    function selectPreset(id) {
+      currentPresetId = id;
+      renderPresetList();
+      updateUniforms({ presetId: id });
+      updateSliderUI();
+    }
+
+    // ==========================================
+    // WEBGL SHADER ENGINE
+    // ==========================================
+    const canvas = document.getElementById('glcanvas');
+    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+
+    const vsSource = `
+      attribute vec2 a_pos;
+      attribute vec2 a_tex;
+      varying vec2 v_tex;
+      void main() {
+        gl_Position = vec4(a_pos, 0.0, 1.0);
+        v_tex = a_tex;
+      }
+    `;
+
+    const fsSource = `
+      precision highp float;
+      varying vec2 v_tex;
+      uniform sampler2D u_image;
+      uniform int u_presetId;
+      uniform float u_intensity;
+      uniform float u_exposure;
+      uniform float u_contrast;
+      uniform float u_temp;
+      uniform float u_showOriginal;
+
+      vec3 rgb2hsv(vec3 c) {
+        vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+        vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+        vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+        float d = q.x - min(q.w, q.y);
+        return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1e-10)), d / (q.x + 1e-10), q.x);
+      }
+
+      vec3 hsv2rgb(vec3 c) {
+        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+      }
+
+      void main() {
+        vec4 color = texture2D(u_image, v_tex);
+        if (u_showOriginal > 0.5) {
+          gl_FragColor = color;
+          return;
+        }
+
+        vec3 orig = color.rgb;
+        vec3 c = color.rgb;
+
+        c = c * pow(2.0, u_exposure * 1.2);
+        c = (c - 0.5) * (1.0 + u_contrast * 0.5) + 0.5;
+        c.r += u_temp * 0.08;
+        c.b -= u_temp * 0.08;
+        c = clamp(c, 0.0, 1.0);
+
+        vec3 target = c;
+
+        // 1. JAPAN SUMMER
+        if (u_presetId == 0) {
+          c = 0.06 + 0.94 * pow(c, vec3(0.88));
+          c.r += 0.03; c.g += 0.02;
+          vec3 hsv = rgb2hsv(c);
+          if (hsv.x >= 0.52 && hsv.x <= 0.74) {
+            float w = clamp(1.0 - abs(hsv.x - 0.63) / 0.13, 0.0, 1.0);
+            hsv.x = mix(hsv.x, 0.51, w * 0.8);
+            hsv.y = mix(hsv.y, hsv.y * 0.85, w);
+            hsv.z = clamp(hsv.z * (1.0 + w * 0.22), 0.0, 1.0);
+          }
+          if (hsv.x >= 0.19 && hsv.x <= 0.46) {
+            float w = clamp(1.0 - abs(hsv.x - 0.33) / 0.15, 0.0, 1.0);
+            hsv.x = mix(hsv.x, 0.22, w * 0.55);
+            hsv.y = clamp(hsv.y * (1.0 + w * 0.25), 0.0, 1.0);
+            hsv.z = clamp(hsv.z * (1.0 + w * 0.32), 0.0, 1.0);
+          }
+          if (hsv.x <= 0.15 || hsv.x >= 0.90) {
+            hsv.y = clamp(hsv.y * 1.2, 0.0, 1.0);
+          }
+          c = hsv2rgb(hsv);
+          float lum = dot(c, vec3(0.299, 0.587, 0.114));
+          c.b += clamp(1.0 - lum * 2.0, 0.0, 1.0) * 0.035;
+          c.r += clamp(lum * 2.0 - 1.0, 0.0, 1.0) * 0.035;
+          target = c;
+        }
+        // 2. KODAK PORTRA
+        else if (u_presetId == 1) {
+          c = 0.04 + 0.96 * pow(c, vec3(0.92));
+          c.r *= 1.08; c.g *= 1.03; c.b *= 0.92;
+          vec3 hsv = rgb2hsv(c);
+          if (hsv.x >= 0.20 && hsv.x <= 0.45) { hsv.x = mix(hsv.x, 0.18, 0.4); hsv.y *= 0.85; }
+          if (hsv.x >= 0.05 && hsv.x <= 0.15) { hsv.y *= 1.15; }
+          target = hsv2rgb(hsv);
+        }
+        // 3. TEAL & ORANGE
+        else if (u_presetId == 2) {
+          c = smoothstep(0.0, 1.0, c);
+          vec3 hsv = rgb2hsv(c);
+          if (hsv.x > 0.45 && hsv.x < 0.80) { hsv.x = 0.52; hsv.y = clamp(hsv.y * 1.3, 0.0, 1.0); }
+          if (hsv.x < 0.20 || hsv.x > 0.85) { hsv.x = 0.08; hsv.y = clamp(hsv.y * 1.35, 0.0, 1.0); }
+          c = hsv2rgb(hsv);
+          float lum = dot(c, vec3(0.299, 0.587, 0.114));
+          c.b += clamp(1.0 - lum * 1.8, 0.0, 1.0) * 0.07;
+          c.g += clamp(1.0 - lum * 1.8, 0.0, 1.0) * 0.03;
+          c.r += clamp(lum * 1.8 - 0.8, 0.0, 1.0) * 0.06;
+          target = c;
+        }
+        // 4. MOODY FOREST
+        else if (u_presetId == 3) {
+          c = pow(c, vec3(1.15));
+          vec3 hsv = rgb2hsv(c);
+          if (hsv.x >= 0.18 && hsv.x <= 0.48) { hsv.x = 0.38; hsv.y *= 0.65; hsv.z *= 0.85; }
+          if (hsv.x >= 0.12 && hsv.x < 0.20) { hsv.y *= 0.4; }
+          c = hsv2rgb(hsv);
+          c.b += 0.03;
+          target = c;
+        }
+        // 5. KOREAN PASTEL
+        else if (u_presetId == 4) {
+          c = 0.08 + 0.92 * pow(c, vec3(0.82));
+          c.r += 0.04; c.g += 0.02; c.b += 0.03;
+          vec3 hsv = rgb2hsv(c);
+          hsv.y *= 0.85;
+          hsv.z = clamp(hsv.z * 1.1, 0.0, 1.0);
+          target = hsv2rgb(hsv);
+        }
+        // 6. NOIR B&W
+        else if (u_presetId == 5) {
+          float gray = dot(c, vec3(0.299, 0.587, 0.114));
+          gray = smoothstep(0.08, 0.92, gray);
+          target = vec3(gray);
+        }
+
+        target = clamp(target, 0.0, 1.0);
+        gl_FragColor = vec4(mix(orig, target, u_intensity), color.a);
+      }
+    `;
+
+    function compileShader(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    }
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, compileShader(gl.VERTEX_SHADER, vsSource));
+    gl.attachShader(prog, compileShader(gl.FRAGMENT_SHADER, fsSource));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    const posBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]), gl.STATIC_DRAW);
+    const aPos = gl.getAttribLocation(prog, 'a_pos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+    const texBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, texBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,1, 1,1, 0,0, 0,0, 1,1, 1,0]), gl.STATIC_DRAW);
+    const aTex = gl.getAttribLocation(prog, 'a_tex');
+    gl.enableVertexAttribArray(aTex);
+    gl.vertexAttribPointer(aTex, 2, gl.FLOAT, false, 0, 0);
+
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    let loadedImg = new Image();
+    loadedImg.onload = function() {
+      canvas.width = loadedImg.width;
+      canvas.height = loadedImg.height;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, loadedImg);
+      render();
+      document.getElementById('empty-state').style.display = 'none';
+      canvas.style.display = 'block';
+      document.getElementById('controls').style.display = 'flex';
+      document.getElementById('btn-compare').style.display = 'block';
+      document.getElementById('btn-save').style.display = 'block';
+      document.getElementById('btn-pick').textContent = 'Đổi ảnh';
+    };
+
+    function render() {
+      if (!loadedImg.complete || !loadedImg.naturalWidth) return;
+      gl.uniform1i(gl.getUniformLocation(prog, 'u_presetId'), currentPresetId);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), params.intensity);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_exposure'), params.exposure);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_contrast'), params.contrast);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_temp'), params.temp);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_showOriginal'), params.showOriginal);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    function updateUniforms(newVals) {
+      Object.assign(params, newVals);
+      render();
+    }
+
+    // ==========================================
+    // UI & SLIDER EVENT HANDLERS
+    // ==========================================
+    const sliderEl = document.getElementById('active-slider');
+    const sliderTitleEl = document.getElementById('slider-title');
+    const sliderValEl = document.getElementById('slider-val');
+
+    function updateSliderUI() {
+      const cur = PRESETS[currentPresetId];
+      if (activeTab === 'intensity') {
+        sliderTitleEl.textContent = `Độ đậm (${cur.name}):`;
+        sliderEl.min = 0; sliderEl.max = 100;
+        sliderEl.value = Math.round(params.intensity * 100);
+        sliderValEl.textContent = `${sliderEl.value}%`;
+        sliderValEl.style.color = cur.color;
+      } else if (activeTab === 'exposure') {
+        sliderTitleEl.textContent = '☀️ Độ phơi sáng:';
+        sliderEl.min = -60; sliderEl.max = 80;
+        sliderEl.value = Math.round(params.exposure * 100);
+        sliderValEl.textContent = params.exposure > 0 ? `+${params.exposure.toFixed(2)}` : params.exposure.toFixed(2);
+        sliderValEl.style.color = '#f39c12';
+      } else if (activeTab === 'contrast') {
+        sliderTitleEl.textContent = '🌓 Độ tương phản:';
+        sliderEl.min = -60; sliderEl.max = 80;
+        sliderEl.value = Math.round(params.contrast * 100);
+        sliderValEl.textContent = sliderEl.value;
+        sliderValEl.style.color = '#e74c3c';
+      } else if (activeTab === 'temp') {
+        sliderTitleEl.textContent = '🌡️ Nhiệt độ màu:';
+        sliderEl.min = -40; sliderEl.max = 40;
+        sliderEl.value = Math.round(params.temp * 100);
+        sliderValEl.textContent = params.temp > 0 ? `Ấm +${params.temp.toFixed(2)}` : params.temp < 0 ? `Lạnh ${params.temp.toFixed(2)}` : '0';
+        sliderValEl.style.color = '#3498db';
+      }
+    }
+
+    sliderEl.oninput = function() {
+      const v = parseFloat(sliderEl.value);
+      if (activeTab === 'intensity') {
+        updateUniforms({ intensity: v / 100.0 });
+        sliderValEl.textContent = `${sliderEl.value}%`;
+      } else if (activeTab === 'exposure') {
+        const val = v / 100.0;
+        updateUniforms({ exposure: val });
+        sliderValEl.textContent = val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2);
+      } else if (activeTab === 'contrast') {
+        updateUniforms({ contrast: v / 100.0 });
+        sliderValEl.textContent = sliderEl.value;
+      } else if (activeTab === 'temp') {
+        const val = v / 100.0;
+        updateUniforms({ temp: val });
+        sliderValEl.textContent = val > 0 ? `Ấm +${val.toFixed(2)}` : val < 0 ? `Lạnh ${val.toFixed(2)}` : '0';
+      }
+    };
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTab = btn.getAttribute('data-tab');
+        updateSliderUI();
+      };
+    });
+
+    // ==========================================
+    // CHỌN ẢNH & SO SÁNH & LƯU ẢNH IPHONE
+    // ==========================================
+    const fileInput = document.getElementById('file-input');
+    document.getElementById('btn-pick').onclick = () => fileInput.click();
+    document.getElementById('empty-state').onclick = () => fileInput.click();
+
+    fileInput.onchange = function(e) {
+      if (e.target.files && e.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          loadedImg.src = evt.target.result;
+        };
+        reader.readAsDataURL(e.target.files[0]);
+      }
+    };
+
+    // Nhấn giữ so sánh ảnh gốc
+    const btnCompare = document.getElementById('btn-compare');
+    const startCompare = () => {
+      btnCompare.classList.add('active');
+      btnCompare.textContent = 'Ảnh Gốc';
+      updateUniforms({ showOriginal: 1.0 });
+    };
+    const endCompare = () => {
+      btnCompare.classList.remove('active');
+      btnCompare.textContent = 'Giữ xem gốc';
+      updateUniforms({ showOriginal: 0.0 });
+    };
+    btnCompare.addEventListener('mousedown', startCompare);
+    btnCompare.addEventListener('mouseup', endCompare);
+    btnCompare.addEventListener('touchstart', (e) => { e.preventDefault(); startCompare(); });
+    btnCompare.addEventListener('touchend', endCompare);
+
+    // Lưu ảnh
+    document.getElementById('btn-save').onclick = async function() {
+      render();
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      
+      // Thử dùng Web Share API của iOS (Lưu trực tiếp vào Album qua Share sheet)
+      if (navigator.share && navigator.canShare) {
+        try {
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
+          const file = new File([blob], `BePicture_${Date.now()}.jpg`, { type: 'image/jpeg' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Bé Picture',
+              text: 'Ảnh chỉnh màu với Bé Picture'
+            });
+            return;
+          }
+        } catch (err) {
+          // Fallback sang modal
+        }
+      }
+
+      // Fallback: Mở modal để người dùng nhấn giữ Lưu ảnh vào Album
+      document.getElementById('modal-img').src = dataUrl;
+      document.getElementById('save-modal').classList.add('show');
+    };
+
+    renderPresetList();
+    updateSliderUI();
+  </script>
+</body>
+</html>
