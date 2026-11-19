@@ -1,4 +1,4 @@
-const CACHE_NAME = 'be-picture-v5';
+const CACHE_NAME = 'be-picture-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
