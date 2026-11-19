@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Bé Picture - Chỉnh Màu Điện Ảnh & Bảo Vệ Da</title>
+  <title>Bé Picture Pro - Màu Phim Fujifilm Chuyên Nghiệp</title>
   
   <!-- Cấu hình PWA cho iOS iPhone & Android -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -163,7 +163,7 @@
     .empty-sub {
       font-size: 13px;
       color: #888;
-      max-width: 300px;
+      max-width: 310px;
       line-height: 19px;
     }
 
@@ -178,7 +178,7 @@
     .preset-bar-title {
       font-size: 10px;
       font-weight: bold;
-      color: #666;
+      color: #777;
       letter-spacing: 1px;
       padding: 10px 16px 4px;
     }
@@ -340,7 +340,7 @@
 
     <!-- BANNER CÔNG NGHỆ CHUYÊN NGHIỆP -->
     <div id="auto-banner">
-      <span id="auto-banner-text">✨ Lõi Oklab + Chống cháy sáng AgX + Bảo vệ da bé</span>
+      <span id="auto-banner-text">✨ Lõi Fujifilm + Chống cháy sáng AgX + Bảo vệ da bé</span>
       <span class="auto-toggle" id="btn-toggle-auto">BẬT</span>
     </div>
 
@@ -350,7 +350,7 @@
         <div class="empty-icon">📷</div>
         <div class="empty-title">Chạm để chọn ảnh cần chỉnh</div>
         <div class="empty-sub">
-          Đã tích hợp chuẩn màu Oklab, nén sáng AgX, bảo vệ da bé trắng hồng và hạt phim hữu cơ!
+          Đã bổ sung 2 màu phim Fujifilm chuyên nghiệp: Velvia (Vua phong cảnh) & Pro 400H (Nữ hoàng chân dung)!
         </div>
       </div>
       <canvas id="glcanvas" style="display:none;"></canvas>
@@ -397,12 +397,14 @@
     }
 
     const PRESETS = [
-      { id: 0, tag: '🇯🇵 Mùa hè Nhật', name: 'Japan Summer', desc: 'Trời xanh ngọc Cyan, cây xanh non Anime, nắng ấm dịu dàng', color: '#00c0ff' },
-      { id: 1, tag: '🎞️ Màu Phim Cổ', name: 'Kodak Portra', desc: 'Tone vàng kim ấm áp hoài niệm, da ấm, chất phim cổ điển', color: '#f39c12' },
-      { id: 2, tag: '🎬 Điện Ảnh Cyber', name: 'Teal & Orange', desc: 'Điện ảnh Hollywood: bóng xanh biển sâu, ánh sáng cam rực rỡ', color: '#00e5ff' },
-      { id: 3, tag: '🌲 Rừng Thông Lạnh', name: 'Moody Forest', desc: 'Tone trầm u tối, cây lá xanh rêu trầm, tĩnh lặng và bí ẩn', color: '#27ae60' },
-      { id: 4, tag: '🌸 Hàn Quốc', name: 'Korean Pastel', desc: 'Sáng trong trẻo, da trắng hồng đào, tương phản nhẹ mơ màng', color: '#ff758c' },
-      { id: 5, tag: '🖤 Đen Trắng Noir', name: 'Classic B&W', desc: 'Trắng đen điện ảnh với độ tương phản sâu nghệ thuật', color: '#bdc3c7' }
+      { id: 0, tag: '🏔️ Fuji Phong Cảnh', name: 'Fuji Velvia', desc: 'Vua phong cảnh: Trời xanh ngọc sâu, rừng lục bảo rực rỡ, tương phản sắc nét', color: '#00d2d3' },
+      { id: 1, tag: '🌸 Fuji Chân Dung', name: 'Fuji Pro 400H', desc: 'Nữ hoàng chân dung: Da trắng hồng mịn màng, tương phản dịu êm, màu phim thơ mộng', color: '#ff9ff3' },
+      { id: 2, tag: '🇯🇵 Mùa hè Nhật', name: 'Japan Summer', desc: 'Trời xanh ngọc Cyan, cây xanh non Anime, nắng ấm dịu dàng Makoto Shinkai', color: '#00c0ff' },
+      { id: 3, tag: '🎞️ Màu Phim Cổ', name: 'Kodak Portra', desc: 'Tone vàng kim ấm áp hoài niệm, da ấm, chất phim cổ điển', color: '#f39c12' },
+      { id: 4, tag: '🎬 Điện Ảnh Cyber', name: 'Teal & Orange', desc: 'Điện ảnh Hollywood: bóng xanh biển sâu, ánh sáng cam rực rỡ', color: '#00e5ff' },
+      { id: 5, tag: '🌲 Rừng Thông Lạnh', name: 'Moody Forest', desc: 'Tone trầm u tối, cây lá xanh rêu trầm, tĩnh lặng và bí ẩn', color: '#27ae60' },
+      { id: 6, tag: '🤍 Hàn Quốc', name: 'Korean Pastel', desc: 'Sáng trong trẻo, da trắng hồng đào, tương phản nhẹ mơ màng', color: '#ff758c' },
+      { id: 7, tag: '🖤 Đen Trắng Noir', name: 'Classic B&W', desc: 'Trắng đen điện ảnh với độ tương phản sâu nghệ thuật', color: '#bdc3c7' }
     ];
 
     let currentPresetId = 0;
@@ -414,7 +416,7 @@
       exposure: 0.0,
       contrast: 0.0,
       temp: 0.0,
-      skinGlow: 0.4,   // Mặc định bảo vệ da bé 40%
+      skinGlow: 0.45,  // Mặc định bảo vệ da bé 45%
       grain: 0.15,      // Hạt phim cổ điển nhẹ 15%
       showOriginal: 0.0
     };
@@ -456,7 +458,7 @@
 
       const bannerText = document.getElementById('auto-banner-text');
       if (Math.abs(expCorrection) > 0.08) {
-        bannerText.textContent = `✨ Tự động bù sáng: ${expCorrection > 0 ? '+' : ''}${expCorrection.toFixed(2)} EV & Bảo vệ da bé`;
+        bannerText.textContent = `✨ Tự động bù sáng: ${expCorrection > 0 ? '+' : ''}${expCorrection.toFixed(2)} EV & Bảo vệ da`;
       } else {
         bannerText.textContent = `✨ Ánh sáng chuẩn, đã bật chống cháy sáng AgX & Bảo vệ da`;
       }
@@ -490,7 +492,7 @@
     }
 
     // ==========================================
-    // WEBGL SHADER: OKLAB + AGX ROLL-OFF + SKIN PROTECTION + ORGANIC GRAIN
+    // WEBGL SHADER: FUJIFILM COLOR SCIENCE + AGX ROLL-OFF + SKIN PROTECTION
     // ==========================================
     const canvas = document.getElementById('glcanvas');
     const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
@@ -537,7 +539,6 @@
         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
       }
 
-      // Khoảng cách góc tròn trên bánh xe màu (0.0 đến 1.0)
       float hueDist(float h1, float h2) {
         float d = abs(h1 - h2);
         return min(d, 1.0 - d);
@@ -547,20 +548,16 @@
         return smoothstep(width, 0.0, hueDist(h, center));
       }
 
-      // Hàm tạo hạt nhiễu giả lập phim nhựa
       float hashNoise(vec2 p) {
         vec3 p3 = fract(vec3(p.xyx) * 0.1031);
         p3 += dot(p3, p3.yzx + 33.33);
         return fract((p3.x + p3.y) * p3.z);
       }
 
-      // THUẬT TOÁN NHẬN DIỆN MÀU DA NGƯỜI (SKIN TONE DETECTION)
+      // THUẬT TOÁN BẢO VỆ DA NGƯỜI
       float detectSkin(vec3 rgb, float hue, float sat) {
-        // Da người nằm ở tông cam ấm (Hue ~ 0.04 đến 0.10)
         float hWeight = smoothstep(0.12, 0.04, abs(hue - 0.07));
-        // Da người có độ bão hòa vừa phải (không quá nhạt như tường, không quá rực như cọc tiêu)
         float sWeight = smoothstep(0.10, 0.20, sat) * smoothstep(0.85, 0.60, sat);
-        // Tỉ lệ chuẩn màu da: R > G > B
         float rCheck = smoothstep(0.0, 0.05, rgb.r - rgb.g);
         float gCheck = smoothstep(0.0, 0.05, rgb.g - rgb.b);
         return clamp(hWeight * sWeight * rCheck * gCheck, 0.0, 1.0);
@@ -588,51 +585,108 @@
         c.b -= u_temp * 0.06;
         c = clamp(c, 0.0, 1.0);
 
-        // Nhận diện vùng da người trước khi đổi màu
         vec3 origHsv = rgb2hsv(c);
         float skinMask = detectSkin(c, origHsv.x, origHsv.y);
 
         vec3 target = c;
 
         // ==========================================================
-        // PRESET 0: JAPAN SUMMER (CHUẨN ANIME MAKOTO SHINKAI)
+        // 0. FUJIFILM VELVIA (VUA PHONG CẢNH - RỰC RỠ & SẮC NÉT)
         // ==========================================================
         if (u_presetId == 0) {
-          // Đường cong phim mờ nhẹ nhàng ở bóng tối
-          c = 0.035 + 0.965 * pow(c, vec3(0.92));
+          // Tương phản cao S-curve đặc trưng của slide film Velvia
+          c = (c - 0.5) * 1.15 + 0.5;
+          c = clamp(c, 0.0, 1.0);
 
           vec3 hsv = rgb2hsv(c);
-
-          // Khóa chống loang lổ: Tường, trần nhà màu xám/trắng tuyệt đối an toàn
           float satGate = smoothstep(0.12, 0.28, hsv.y);
 
-          // [BẦU TRỜI]: Blue (0.61) bẻ mượt về Cyan (0.51)
+          // [Bầu trời & Biển]: Xanh dương sâu thẳm, ngọc bích đậm đà
           float skyW = hueWeight(hsv.x, 0.61, 0.16) * satGate;
-          hsv.x = mix(hsv.x, 0.51, skyW * 0.75);
-          hsv.y = mix(hsv.y, hsv.y * 0.88, skyW);
+          hsv.x = mix(hsv.x, 0.54, skyW * 0.70);
+          hsv.y = clamp(hsv.y * (1.0 + skyW * 0.40), 0.0, 1.0);
 
-          // [CÂY CỎ]: Green (0.33) bẻ mượt về Xanh non vàng ấm (0.22)
+          // [Cây cỏ & Núi rừng]: Xanh lục bảo (Emerald Green) đậm, giàu sức sống
           float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
-          hsv.x = mix(hsv.x, 0.22, greenW * 0.60);
-          hsv.y = clamp(hsv.y * (1.0 + greenW * 0.22), 0.0, 1.0);
+          hsv.x = mix(hsv.x, 0.29, greenW * 0.45);
+          hsv.y = clamp(hsv.y * (1.0 + greenW * 0.42), 0.0, 1.0);
 
-          // [MÀU ẤM NẮNG]:
+          // [Hoàng hôn & Nắng ấm]: Rực rỡ, no màu
           float warmW = hueWeight(hsv.x, 0.08, 0.14) * satGate;
-          hsv.y = clamp(hsv.y * (1.0 + warmW * 0.15), 0.0, 1.0);
+          hsv.y = clamp(hsv.y * (1.0 + warmW * 0.35), 0.0, 1.0);
 
           c = hsv2rgb(hsv);
 
-          // Split Toning mượt mà:
+          // Đổ bóng sâu, trong trẻo
+          float lum = dot(c, vec3(0.299, 0.587, 0.114));
+          c.b += (1.0 - lum) * 0.025;
+          c.r += lum * 0.02;
+
+          target = c;
+        }
+
+        // ==========================================================
+        // 1. FUJIFILM PRO 400H / ASTIA (NỮ HOÀNG CHÂN DUNG - DA HỒNG SỨ)
+        // ==========================================================
+        else if (u_presetId == 1) {
+          // Tương phản dịu, nâng nhẹ vùng tối (milky film fade)
+          c = 0.045 + 0.955 * pow(c, vec3(0.90));
+
+          vec3 hsv = rgb2hsv(c);
+          float satGate = smoothstep(0.12, 0.28, hsv.y);
+
+          // [Hậu cảnh cây cối]: Giảm bớt độ gắt, ngả xanh rêu pastel (Sage Green)
+          // để KHÔNG cướp sự chú ý khỏi gương mặt chủ thể
+          float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.38, greenW * 0.55);
+          hsv.y *= (1.0 - greenW * 0.30);
+
+          // [Bầu trời & Highlight]: Airy pastel cyan nhẹ nhàng
+          float skyW = hueWeight(hsv.x, 0.61, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.52, skyW * 0.60);
+          hsv.y *= 0.85;
+
+          c = hsv2rgb(hsv);
+
+          // Tôn da trắng hồng, thanh thoát
+          c.r = min(1.0, c.r * 1.05);
+          c.g = min(1.0, c.g * 1.02);
+          c.b = min(1.0, c.b * 1.01);
+
+          // Ám nhẹ xanh pastel ở bóng râm đặc trưng Fuji film
+          float lum = dot(c, vec3(0.299, 0.587, 0.114));
+          c.b += (1.0 - lum) * 0.03;
+          c.g += (1.0 - lum) * 0.015;
+
+          target = c;
+        }
+
+        // ==========================================================
+        // 2. JAPAN SUMMER (MÙA HÈ NHẬT BẢN / MAKOTO SHINKAI)
+        // ==========================================================
+        else if (u_presetId == 2) {
+          c = 0.035 + 0.965 * pow(c, vec3(0.92));
+          vec3 hsv = rgb2hsv(c);
+          float satGate = smoothstep(0.12, 0.28, hsv.y);
+          float skyW = hueWeight(hsv.x, 0.61, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.51, skyW * 0.75);
+          hsv.y = mix(hsv.y, 0.88 * hsv.y, skyW);
+          float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.22, greenW * 0.60);
+          hsv.y = clamp(hsv.y * (1.0 + greenW * 0.22), 0.0, 1.0);
+          float warmW = hueWeight(hsv.x, 0.08, 0.14) * satGate;
+          hsv.y = clamp(hsv.y * (1.0 + warmW * 0.15), 0.0, 1.0);
+          c = hsv2rgb(hsv);
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
           c.b += (1.0 - lum) * 0.035;
           c.g += (1.0 - lum) * 0.015;
           c.r += lum * 0.025;
           c.g += lum * 0.015;
-
           target = c;
         }
-        // PRESET 1: KODAK PORTRA
-        else if (u_presetId == 1) {
+
+        // 3. KODAK PORTRA
+        else if (u_presetId == 3) {
           c = 0.03 + 0.97 * pow(c, vec3(0.94));
           c.r *= 1.05; c.g *= 1.02; c.b *= 0.94;
           vec3 hsv = rgb2hsv(c);
@@ -642,8 +696,9 @@
           hsv.y *= (1.0 - greenW * 0.15);
           target = hsv2rgb(hsv);
         }
-        // PRESET 2: TEAL & ORANGE
-        else if (u_presetId == 2) {
+
+        // 4. TEAL & ORANGE
+        else if (u_presetId == 4) {
           c = smoothstep(0.0, 1.0, c);
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
           c.b += (1.0 - lum) * 0.06;
@@ -651,8 +706,9 @@
           c.r += lum * 0.05;
           target = c;
         }
-        // PRESET 3: MOODY FOREST
-        else if (u_presetId == 3) {
+
+        // 5. MOODY FOREST
+        else if (u_presetId == 5) {
           c = pow(c, vec3(1.1));
           vec3 hsv = rgb2hsv(c);
           float satGate = smoothstep(0.12, 0.25, hsv.y);
@@ -663,16 +719,18 @@
           c.b += 0.025;
           target = c;
         }
-        // PRESET 4: KOREAN PASTEL
-        else if (u_presetId == 4) {
+
+        // 6. KOREAN PASTEL
+        else if (u_presetId == 6) {
           c = 0.06 + 0.94 * pow(c, vec3(0.86));
           c.r += 0.03; c.b += 0.02;
           vec3 hsv = rgb2hsv(c);
           hsv.y *= 0.88;
           target = hsv2rgb(hsv);
         }
-        // PRESET 5: NOIR B&W
-        else if (u_presetId == 5) {
+
+        // 7. NOIR B&W
+        else if (u_presetId == 7) {
           float gray = dot(c, vec3(0.299, 0.587, 0.114));
           target = vec3(smoothstep(0.06, 0.94, gray));
         }
@@ -685,17 +743,14 @@
         // ==========================================================
         if (skinMask > 0.01 && u_skinGlow > 0.01) {
           vec3 skinTuned = orig;
-          // Thêm độ ấm và ánh hồng hào nhẹ cho da
           skinTuned.r = min(1.0, skinTuned.r * (1.0 + 0.08 * u_skinGlow));
           skinTuned.g = min(1.0, skinTuned.g * (1.0 + 0.02 * u_skinGlow));
           skinTuned.b = min(1.0, skinTuned.b * (1.0 - 0.03 * u_skinGlow));
-          // Hòa trộn bảo vệ da bé không bao giờ bị ám màu xanh/lạnh
           graded = mix(graded, skinTuned, skinMask * u_skinGlow);
         }
 
         // ==========================================================
         // 4. THUẬT TOÁN NÉN SÁNG AGX / ACES (HIGHLIGHT ROLL-OFF)
-        // Khi gặp vùng quá chói, tự động làm dịu về màu trắng tinh khiết
         // ==========================================================
         float luma = dot(graded, vec3(0.299, 0.587, 0.114));
         float highlightBurn = smoothstep(0.82, 1.0, luma);
@@ -703,11 +758,9 @@
 
         // ==========================================================
         // 5. HẠT PHIM HỮU CƠ (ORGANIC MIDTONE FILM GRAIN)
-        // Chỉ xuất hiện tự nhiên ở vùng trung âm, che lấp nén ảnh
         // ==========================================================
         if (u_grain > 0.01) {
           float noise = (hashNoise(v_tex * 450.0) - 0.5) * 0.25;
-          // Hình chuông Gauss: Hạt phim chỉ đậm ở Midtone (~0.45)
           float midtoneBell = 4.0 * luma * (1.0 - luma);
           graded += noise * midtoneBell * u_grain;
         }
@@ -825,7 +878,7 @@
         sliderValEl.textContent = manualParams.temp > 0 ? `Ấm +${manualParams.temp.toFixed(2)}` : manualParams.temp < 0 ? `Lạnh ${manualParams.temp.toFixed(2)}` : '0';
         sliderValEl.style.color = '#3498db';
       } else if (activeTab === 'skinglow') {
-        sliderTitleEl.textContent = '👶 Da bé hồng hào:';
+        sliderTitleEl.textContent = '👶 Da hồng hào:';
         sliderEl.min = 0; sliderEl.max = 100;
         sliderEl.value = Math.round(manualParams.skinGlow * 100);
         sliderValEl.textContent = `${sliderEl.value}%`;
