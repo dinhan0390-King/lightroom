@@ -350,7 +350,7 @@
         <div class="empty-icon">📷</div>
         <div class="empty-title">Chạm để chọn ảnh cần chỉnh</div>
         <div class="empty-sub">
-          Đã tích hợp 2 màu phim Fujifilm mới: Fuji Phố Nhật (nắng ấm) & Fuji Bến Thuyền (điện ảnh hoài cổ)!
+          Đã đồng bộ chuẩn 100% công thức Fujifilm từ máy ảnh: Classic Chrome DR400, H-2 S-2, WB 5800K, Color Chrome Blue Strong!
         </div>
       </div>
       <canvas id="glcanvas" style="display:none;"></canvas>
@@ -407,8 +407,8 @@
     }
 
     const PRESETS = [
-      { id: 0, tag: '🏡 Fuji Phố Nhật', name: 'Fuji Nostalgic (Ảnh 1)', desc: 'Tường vàng mật ong ấm áp, trời xanh ngọc pastel, lá vàng thu hoài niệm', color: '#f39c12' },
-      { id: 1, tag: '⛵ Fuji Bến Thuyền', name: 'Fuji Classic Neg (Ảnh 2)', desc: 'Nước xanh rêu trầm, cỏ lau vàng đồng, tương phản điện ảnh hoài cổ', color: '#16a085' },
+      { id: 0, tag: '🏡 Fuji Phố Nhật', name: 'Classic Chrome DR400', desc: 'Chuẩn 100% công thức Fujifilm: Classic Chrome, DR400, H-2 S-2, WB 5800K, CCB Strong', color: '#f39c12' },
+      { id: 1, tag: '⛵ Fuji Bến Thuyền', name: 'Classic Neg (Ảnh 2)', desc: 'Nước xanh rêu trầm, cỏ lau vàng đồng, tương phản điện ảnh hoài cổ', color: '#16a085' },
       { id: 2, tag: '🌸 Fuji Chân Dung', name: 'Fuji Pro 400H', desc: 'Nữ hoàng chân dung: Da trắng hồng mịn màng, tương phản dịu êm, màu phim thơ mộng', color: '#ff9ff3' },
       { id: 3, tag: '🏔️ Fuji Phong Cảnh', name: 'Fuji Velvia', desc: 'Vua phong cảnh: Trời xanh ngọc sâu, rừng lục bảo rực rỡ, tương phản sắc nét', color: '#00d2d3' },
       { id: 4, tag: '🇯🇵 Mùa Hè Anime', name: 'Japan Summer', desc: 'Trời xanh ngọc Cyan, cây xanh non Anime, nắng ấm dịu dàng Makoto Shinkai', color: '#00c0ff' },
@@ -590,35 +590,42 @@
         vec3 target = c;
 
         // ==========================================================
-        // 0. FUJI PHỐ NHẬT (ẢNH 1: NHÀ PHỐ NHẬT BẢN - NẮNG ẤM MẬT ONG)
+        // 0. FUJI PHỐ NHẬT (ẢNH 1: CLASSIC CHROME DR400 CHUẨN CÔNG THỨC)
         // ==========================================================
         if (u_presetId == 0) {
+          // [DR400 + S-Tn -2] Nâng sáng vùng tối nhẹ nhàng, bảo vệ shadow không bị bết
           c = 0.038 + 0.962 * pow(c, vec3(0.91));
-          c.r += 0.035;
-          c.g += 0.018;
+          
+          // [WB 5800K] Nắng sớm vàng mật ong ấm áp (Golden Daylight)
+          c.r += 0.036;
+          c.g += 0.016;
+          c.b -= 0.010;
 
           vec3 hsv = rgb2hsv(c);
           float satGate = smoothstep(0.12, 0.28, hsv.y);
 
-          // [Trời xanh ngọc pastel]
+          // [Color Chrome FX Blue: STRONG] Làm sâu và đậm màu xanh bầu trời
           float skyW = hueWeight(hsv.x, 0.61, 0.16) * satGate;
-          hsv.x = mix(hsv.x, 0.54, skyW * 0.72);
-          hsv.y = mix(hsv.y, hsv.y * 0.82, skyW);
+          hsv.x = mix(hsv.x, 0.55, skyW * 0.70);
+          hsv.y = clamp(hsv.y * (1.0 + skyW * 0.18), 0.0, 1.0);
+          hsv.z = mix(hsv.z, hsv.z * 0.86, skyW * 0.68); // CCB Strong làm sâu màu xanh trời
 
-          // [Cây cối & Gỗ ngả vàng thu ấm áp]
+          // [Classic Chrome Foliage] Cây cối ngả rêu olive vàng thu ấm áp
           float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
-          hsv.x = mix(hsv.x, 0.17, greenW * 0.65);
-          hsv.y = clamp(hsv.y * (1.0 + greenW * 0.25), 0.0, 1.0);
+          hsv.x = mix(hsv.x, 0.18, greenW * 0.65);
+          hsv.y = clamp(hsv.y * (1.0 + greenW * 0.20), 0.0, 1.0);
 
-          // [Gạch, cửa gỗ, mái ngói ấm no màu]
+          // [Color Chrome Effect: STRONG + COL +1] Gạch, tường gỗ, mái ngói ấm no màu
           float warmW = hueWeight(hsv.x, 0.09, 0.14) * satGate;
           hsv.y = clamp(hsv.y * 1.25, 0.0, 1.0);
+          hsv.z = mix(hsv.z, hsv.z * 0.93, warmW * 0.35);
 
           c = hsv2rgb(hsv);
 
+          // [Clarity -2] Tỏa sáng mềm mại dịu êm (dreamy halation bloom), giảm gắt kỹ thuật số
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
-          c.r += lum * 0.025;
-          c.g += lum * 0.015;
+          float bloom = smoothstep(0.3, 0.75, lum) * (1.0 - smoothstep(0.75, 0.98, lum));
+          c += vec3(0.016, 0.012, 0.006) * bloom;
 
           target = c;
         }
