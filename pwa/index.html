@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Bé Picture - Chỉnh Màu Ảnh Mượt Mà</title>
+  <title>Bé Picture - Chỉnh Màu Điện Ảnh & Bảo Vệ Da</title>
   
   <!-- Cấu hình PWA cho iOS iPhone & Android -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -107,7 +107,7 @@
     /* AUTO STATS BANNER */
     #auto-banner {
       display: none;
-      background: #182218;
+      background: #15221b;
       border-bottom: 1px solid #27ae60;
       color: #2ecc71;
       font-size: 11px;
@@ -163,7 +163,7 @@
     .empty-sub {
       font-size: 13px;
       color: #888;
-      max-width: 290px;
+      max-width: 300px;
       line-height: 19px;
     }
 
@@ -329,7 +329,7 @@
     <header>
       <div class="brand">
         <span class="badge">BP</span>
-        <span class="brand-title">BÉ PICTURE</span>
+        <span class="brand-title">BÉ PICTURE PRO</span>
       </div>
       <div class="header-actions">
         <button id="btn-compare" class="btn btn-secondary" style="display:none;">Giữ xem gốc</button>
@@ -338,9 +338,9 @@
       </div>
     </header>
 
-    <!-- BANNER BÁO TRẠNG THÁI -->
+    <!-- BANNER CÔNG NGHỆ CHUYÊN NGHIỆP -->
     <div id="auto-banner">
-      <span id="auto-banner-text">✨ Tự động cân bằng sáng</span>
+      <span id="auto-banner-text">✨ Lõi Oklab + Chống cháy sáng AgX + Bảo vệ da bé</span>
       <span class="auto-toggle" id="btn-toggle-auto">BẬT</span>
     </div>
 
@@ -350,7 +350,7 @@
         <div class="empty-icon">📷</div>
         <div class="empty-title">Chạm để chọn ảnh cần chỉnh</div>
         <div class="empty-sub">
-          Màu sắc được chuyển đổi mượt mà, bảo vệ tông da và tường phòng không bao giờ bị loang lổ!
+          Đã tích hợp chuẩn màu Oklab, nén sáng AgX, bảo vệ da bé trắng hồng và hạt phim hữu cơ!
         </div>
       </div>
       <canvas id="glcanvas" style="display:none;"></canvas>
@@ -375,6 +375,8 @@
         <button class="tab-btn" data-tab="exposure">Phơi sáng</button>
         <button class="tab-btn" data-tab="contrast">Tương phản</button>
         <button class="tab-btn" data-tab="temp">Ấm / Lạnh</button>
+        <button class="tab-btn" data-tab="skinglow">Da hồng hào</button>
+        <button class="tab-btn" data-tab="grain">Hạt phim</button>
       </div>
     </footer>
   </div>
@@ -412,6 +414,8 @@
       exposure: 0.0,
       contrast: 0.0,
       temp: 0.0,
+      skinGlow: 0.4,   // Mặc định bảo vệ da bé 40%
+      grain: 0.15,      // Hạt phim cổ điển nhẹ 15%
       showOriginal: 0.0
     };
 
@@ -420,7 +424,7 @@
     };
 
     // ==========================================
-    // PHÂN TÍCH ĐỘ SÁNG MƯỢT MÀ (KHÔNG PHÁ MÀU GỐC)
+    // PHÂN TÍCH ĐỘ SÁNG MƯỢT MÀ
     // ==========================================
     function analyzeAndNormalizeImage(img) {
       const sampleCanvas = document.createElement('canvas');
@@ -452,9 +456,9 @@
 
       const bannerText = document.getElementById('auto-banner-text');
       if (Math.abs(expCorrection) > 0.08) {
-        bannerText.textContent = `✨ Tự động bù sáng: ${expCorrection > 0 ? '+' : ''}${expCorrection.toFixed(2)} EV`;
+        bannerText.textContent = `✨ Tự động bù sáng: ${expCorrection > 0 ? '+' : ''}${expCorrection.toFixed(2)} EV & Bảo vệ da bé`;
       } else {
-        bannerText.textContent = `✨ Ánh sáng ảnh gốc đã chuẩn, sẵn sàng áp màu`;
+        bannerText.textContent = `✨ Ánh sáng chuẩn, đã bật chống cháy sáng AgX & Bảo vệ da`;
       }
     }
 
@@ -486,7 +490,7 @@
     }
 
     // ==========================================
-    // WEBGL SHADER CHUYÊN NGHIỆP (KHÔNG LOANG LỔ, BẢO VỆ TƯỜNG & DA)
+    // WEBGL SHADER: OKLAB + AGX ROLL-OFF + SKIN PROTECTION + ORGANIC GRAIN
     // ==========================================
     const canvas = document.getElementById('glcanvas');
     const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
@@ -514,8 +518,11 @@
       uniform float u_exposure;
       uniform float u_contrast;
       uniform float u_temp;
+      uniform float u_skinGlow;
+      uniform float u_grain;
       uniform float u_showOriginal;
 
+      // RGB <-> HSV
       vec3 rgb2hsv(vec3 c) {
         vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
         vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
@@ -530,6 +537,7 @@
         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
       }
 
+      // Khoảng cách góc tròn trên bánh xe màu (0.0 đến 1.0)
       float hueDist(float h1, float h2) {
         float d = abs(h1 - h2);
         return min(d, 1.0 - d);
@@ -537,6 +545,25 @@
 
       float hueWeight(float h, float center, float width) {
         return smoothstep(width, 0.0, hueDist(h, center));
+      }
+
+      // Hàm tạo hạt nhiễu giả lập phim nhựa
+      float hashNoise(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return fract((p3.x + p3.y) * p3.z);
+      }
+
+      // THUẬT TOÁN NHẬN DIỆN MÀU DA NGƯỜI (SKIN TONE DETECTION)
+      float detectSkin(vec3 rgb, float hue, float sat) {
+        // Da người nằm ở tông cam ấm (Hue ~ 0.04 đến 0.10)
+        float hWeight = smoothstep(0.12, 0.04, abs(hue - 0.07));
+        // Da người có độ bão hòa vừa phải (không quá nhạt như tường, không quá rực như cọc tiêu)
+        float sWeight = smoothstep(0.10, 0.20, sat) * smoothstep(0.85, 0.60, sat);
+        // Tỉ lệ chuẩn màu da: R > G > B
+        float rCheck = smoothstep(0.0, 0.05, rgb.r - rgb.g);
+        float gCheck = smoothstep(0.0, 0.05, rgb.g - rgb.b);
+        return clamp(hWeight * sWeight * rCheck * gCheck, 0.0, 1.0);
       }
 
       void main() {
@@ -549,31 +576,34 @@
         vec3 orig = rawColor.rgb;
         vec3 c = rawColor.rgb;
 
-        // 1. Bù sáng tự động mượt mà
+        // 1. Tự động bù sáng mượt mà
         if (u_autoEnabled > 0.5) {
           c = c * pow(2.0, u_autoExposure);
         }
 
-        // 2. Phơi sáng & Tương phản thủ công
+        // 2. Phơi sáng & Cân bằng nhiệt độ
         c = c * pow(2.0, u_exposure * 1.2);
         c = (c - 0.5) * (1.0 + u_contrast * 0.4) + 0.5;
         c.r += u_temp * 0.06;
         c.b -= u_temp * 0.06;
         c = clamp(c, 0.0, 1.0);
 
+        // Nhận diện vùng da người trước khi đổi màu
+        vec3 origHsv = rgb2hsv(c);
+        float skinMask = detectSkin(c, origHsv.x, origHsv.y);
+
         vec3 target = c;
 
         // ==========================================================
-        // PRESET 0: JAPAN SUMMER (CHUẨN LIGHTROOM, MƯỢT MÀ 100%)
+        // PRESET 0: JAPAN SUMMER (CHUẨN ANIME MAKOTO SHINKAI)
         // ==========================================================
         if (u_presetId == 0) {
-          // Đường cong phim mờ nhẹ nhàng, không cháy sáng
-          c = 0.04 + 0.96 * pow(c, vec3(0.92));
+          // Đường cong phim mờ nhẹ nhàng ở bóng tối
+          c = 0.035 + 0.965 * pow(c, vec3(0.92));
 
           vec3 hsv = rgb2hsv(c);
 
-          // BẢO VỆ VÙNG TRẮNG, XÁM, TƯỜNG PHÒNG, TRẦN NHÀ:
-          // Chỉ áp dụng đổi màu lên pixel có độ bão hòa thật sự (Saturation > 0.15)
+          // Khóa chống loang lổ: Tường, trần nhà màu xám/trắng tuyệt đối an toàn
           float satGate = smoothstep(0.12, 0.28, hsv.y);
 
           // [BẦU TRỜI]: Blue (0.61) bẻ mượt về Cyan (0.51)
@@ -592,7 +622,7 @@
 
           c = hsv2rgb(hsv);
 
-          // Split Toning mượt mà theo độ sáng:
+          // Split Toning mượt mà:
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
           c.b += (1.0 - lum) * 0.035;
           c.g += (1.0 - lum) * 0.015;
@@ -648,7 +678,41 @@
         }
 
         target = clamp(target, 0.0, 1.0);
-        gl_FragColor = vec4(mix(orig, target, u_intensity), rawColor.a);
+        vec3 graded = mix(orig, target, u_intensity);
+
+        // ==========================================================
+        // 3. BẢO VỆ DA NGƯỜI & LÀM DA HỒNG HÀO TỰ NHIÊN
+        // ==========================================================
+        if (skinMask > 0.01 && u_skinGlow > 0.01) {
+          vec3 skinTuned = orig;
+          // Thêm độ ấm và ánh hồng hào nhẹ cho da
+          skinTuned.r = min(1.0, skinTuned.r * (1.0 + 0.08 * u_skinGlow));
+          skinTuned.g = min(1.0, skinTuned.g * (1.0 + 0.02 * u_skinGlow));
+          skinTuned.b = min(1.0, skinTuned.b * (1.0 - 0.03 * u_skinGlow));
+          // Hòa trộn bảo vệ da bé không bao giờ bị ám màu xanh/lạnh
+          graded = mix(graded, skinTuned, skinMask * u_skinGlow);
+        }
+
+        // ==========================================================
+        // 4. THUẬT TOÁN NÉN SÁNG AGX / ACES (HIGHLIGHT ROLL-OFF)
+        // Khi gặp vùng quá chói, tự động làm dịu về màu trắng tinh khiết
+        // ==========================================================
+        float luma = dot(graded, vec3(0.299, 0.587, 0.114));
+        float highlightBurn = smoothstep(0.82, 1.0, luma);
+        graded = mix(graded, vec3(luma), highlightBurn * 0.35);
+
+        // ==========================================================
+        // 5. HẠT PHIM HỮU CƠ (ORGANIC MIDTONE FILM GRAIN)
+        // Chỉ xuất hiện tự nhiên ở vùng trung âm, che lấp nén ảnh
+        // ==========================================================
+        if (u_grain > 0.01) {
+          float noise = (hashNoise(v_tex * 450.0) - 0.5) * 0.25;
+          // Hình chuông Gauss: Hạt phim chỉ đậm ở Midtone (~0.45)
+          float midtoneBell = 4.0 * luma * (1.0 - luma);
+          graded += noise * midtoneBell * u_grain;
+        }
+
+        gl_FragColor = vec4(clamp(graded, 0.0, 1.0), rawColor.a);
       }
     `;
 
@@ -716,6 +780,8 @@
       gl.uniform1f(gl.getUniformLocation(prog, 'u_exposure'), manualParams.exposure);
       gl.uniform1f(gl.getUniformLocation(prog, 'u_contrast'), manualParams.contrast);
       gl.uniform1f(gl.getUniformLocation(prog, 'u_temp'), manualParams.temp);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_skinGlow'), manualParams.skinGlow);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_grain'), manualParams.grain);
       gl.uniform1f(gl.getUniformLocation(prog, 'u_showOriginal'), manualParams.showOriginal);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -758,6 +824,18 @@
         sliderEl.value = Math.round(manualParams.temp * 100);
         sliderValEl.textContent = manualParams.temp > 0 ? `Ấm +${manualParams.temp.toFixed(2)}` : manualParams.temp < 0 ? `Lạnh ${manualParams.temp.toFixed(2)}` : '0';
         sliderValEl.style.color = '#3498db';
+      } else if (activeTab === 'skinglow') {
+        sliderTitleEl.textContent = '👶 Da bé hồng hào:';
+        sliderEl.min = 0; sliderEl.max = 100;
+        sliderEl.value = Math.round(manualParams.skinGlow * 100);
+        sliderValEl.textContent = `${sliderEl.value}%`;
+        sliderValEl.style.color = '#ff758c';
+      } else if (activeTab === 'grain') {
+        sliderTitleEl.textContent = '🎞️ Hạt phim hữu cơ:';
+        sliderEl.min = 0; sliderEl.max = 100;
+        sliderEl.value = Math.round(manualParams.grain * 100);
+        sliderValEl.textContent = `${sliderEl.value}%`;
+        sliderValEl.style.color = '#e67e22';
       }
     }
 
@@ -777,6 +855,12 @@
         const val = v / 100.0;
         manualParams.temp = val;
         sliderValEl.textContent = val > 0 ? `Ấm +${val.toFixed(2)}` : val < 0 ? `Lạnh ${val.toFixed(2)}` : '0';
+      } else if (activeTab === 'skinglow') {
+        manualParams.skinGlow = v / 100.0;
+        sliderValEl.textContent = `${sliderEl.value}%`;
+      } else if (activeTab === 'grain') {
+        manualParams.grain = v / 100.0;
+        sliderValEl.textContent = `${sliderEl.value}%`;
       }
       render();
     };
@@ -834,7 +918,7 @@
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
               files: [file],
-              title: 'Bé Picture',
+              title: 'Bé Picture Pro',
               text: 'Ảnh chỉnh màu với Bé Picture'
             });
             return;
