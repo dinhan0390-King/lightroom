@@ -1,4 +1,4 @@
-const CACHE_NAME = 'be-picture-v6';
+const CACHE_NAME = 'be-picture-v7';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -9,10 +9,11 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // Kích hoạt ngay lập tức bản mới
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -22,32 +23,28 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            return caches.delete(key);
+            return caches.delete(key); // Xóa sạch các bản cache cũ
           }
         })
       );
-    }).then(() => self.clients.claim())
+    }).then(() => self.clients.claim()) // Chiếm quyền điều khiển ngay lập tức
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  // Ưu tiên lấy từ mạng nếu có mạng để luôn nhận bản mới nhất
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-        const responseToCache = networkResponse.clone();
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseClone = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+          cache.put(event.request, responseClone);
         });
-        return networkResponse;
-      }).catch(() => {
-        return caches.match('./index.html');
-      });
+      }
+      return networkResponse;
+    }).catch(() => {
+      // Khi mất mạng thì mới dùng bản cache offline
+      return caches.match(event.request).then(cached => cached || caches.match('./index.html'));
     })
   );
 });
