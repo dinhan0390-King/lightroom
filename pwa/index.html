@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Bé Picture - Chỉnh Màu Ảnh</title>
+  <title>Bé Picture - Chỉnh Màu Thông Minh</title>
   
   <!-- Cấu hình PWA cho iOS iPhone -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -104,6 +104,28 @@
       font-weight: bold;
     }
 
+    /* AUTO STATS BANNER */
+    #auto-banner {
+      display: none;
+      background: #182218;
+      border-bottom: 1px solid #27ae60;
+      color: #2ecc71;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 16px;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .auto-toggle {
+      background: #27ae60;
+      color: #000;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
     /* PREVIEW VIEWPORT */
     #viewport {
       flex: 1;
@@ -140,9 +162,9 @@
     }
     .empty-sub {
       font-size: 13px;
-      color: #777;
-      max-width: 280px;
-      line-height: 18px;
+      color: #888;
+      max-width: 290px;
+      line-height: 19px;
     }
 
     /* BOTTOM CONTROLS */
@@ -316,12 +338,20 @@
       </div>
     </header>
 
+    <!-- BANNER BÁO TRẠNG THÁI TỰ ĐỘNG CÂN BẰNG MÀU -->
+    <div id="auto-banner">
+      <span id="auto-banner-text">✨ Tự động nhận diện & chuẩn hóa màu</span>
+      <span class="auto-toggle" id="btn-toggle-auto">BẬT</span>
+    </div>
+
     <!-- VIEWPORT -->
     <main id="viewport">
       <div id="empty-state">
         <div class="empty-icon">📷</div>
         <div class="empty-title">Chạm để chọn ảnh từ iPhone</div>
-        <div class="empty-sub">Áp dụng tức thì 6 bộ màu: Nhật Bản mùa hè, Phim Kodak, Teal & Orange, Hàn Quốc...</div>
+        <div class="empty-sub">
+          Tự động phân tích ánh sáng & chuẩn hóa về chuẩn màu Nhật Bản, dù ảnh gốc tối, sáng hay nhạt màu!
+        </div>
       </div>
       <canvas id="glcanvas" style="display:none;"></canvas>
     </main>
@@ -360,7 +390,6 @@
   </div>
 
   <script>
-    // Đăng ký Service Worker để chạy Offline 100%
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').catch(console.error);
     }
@@ -376,7 +405,10 @@
 
     let currentPresetId = 0;
     let activeTab = 'intensity';
-    let params = {
+    let autoNormalEnabled = true;
+
+    // Các thông số tinh chỉnh thủ công
+    let manualParams = {
       intensity: 1.0,
       exposure: 0.0,
       contrast: 0.0,
@@ -384,7 +416,104 @@
       showOriginal: 0.0
     };
 
-    // Khởi tạo giao diện danh sách Preset
+    // Các thông số tự động đo lường từ ảnh đầu vào
+    let autoParams = {
+      exposureOffset: 0.0,
+      rGain: 1.0,
+      gGain: 1.0,
+      bGain: 1.0,
+      contrastStretch: 1.0,
+      satScale: 1.0
+    };
+
+    // ==========================================
+    // BỘ PHÂN TÍCH ẢNH THÔNG MINH (COLOR NORMALIZATION)
+    // ==========================================
+    function analyzeAndNormalizeImage(img) {
+      const sampleCanvas = document.createElement('canvas');
+      const size = 64;
+      sampleCanvas.width = size;
+      sampleCanvas.height = size;
+      const sCtx = sampleCanvas.getContext('2d');
+      sCtx.drawImage(img, 0, 0, size, size);
+      const imgData = sCtx.getImageData(0, 0, size, size).data;
+
+      let totalLum = 0, totalR = 0, totalG = 0, totalB = 0, totalSat = 0;
+      let minLum = 1.0, maxLum = 0.0;
+      const count = size * size;
+
+      for (let i = 0; i < imgData.length; i += 4) {
+        const r = imgData[i] / 255.0;
+        const g = imgData[i+1] / 255.0;
+        const b = imgData[i+2] / 255.0;
+
+        totalR += r;
+        totalG += g;
+        totalB += b;
+
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        totalLum += lum;
+        if (lum < minLum) minLum = lum;
+        if (lum > maxLum) maxLum = lum;
+
+        const maxC = Math.max(r, g, b);
+        const minC = Math.min(r, g, b);
+        const sat = maxC === 0 ? 0 : (maxC - minC) / maxC;
+        totalSat += sat;
+      }
+
+      const avgLum = totalLum / count;
+      const avgR = totalR / count;
+      const avgG = totalG / count;
+      const avgB = totalB / count;
+      const avgSat = totalSat / count;
+      const grayAvg = (avgR + avgG + avgB) / 3.0;
+
+      // 1. Tự động bù sáng (Auto Exposure Normalization):
+      // Đưa độ sáng trung bình của mọi ảnh về mốc chuẩn chuẩn phim Nhật ~0.46
+      // Nếu ảnh quá tối (avgLum = 0.2) -> tự tăng sáng ~1.2 EV
+      // Nếu ảnh quá chói (avgLum = 0.75) -> tự dìm sáng xuống ~ -0.7 EV
+      const targetLum = 0.46;
+      let expCorrection = Math.log2(targetLum / Math.max(avgLum, 0.06));
+      expCorrection = Math.max(Math.min(expCorrection, 1.4), -1.1);
+
+      // 2. Cân bằng trắng Gray-World (Triệt tiêu ám vàng đèn phòng hoặc ám xanh lạnh):
+      let rG = grayAvg / Math.max(avgR, 0.05);
+      let gG = grayAvg / Math.max(avgG, 0.05);
+      let bG = grayAvg / Math.max(avgB, 0.05);
+      // Giữ cho cân bằng trắng tự nhiên, không biến đổi quá gắt
+      rG = Math.max(Math.min(rG, 1.35), 0.75);
+      gG = Math.max(Math.min(gG, 1.35), 0.75);
+      bG = Math.max(Math.min(bG, 1.35), 0.75);
+
+      // 3. Tự động căng dải tương phản (Dynamic Range Stretch):
+      // Nếu ảnh đục/nhạt nhoà (dải sáng hẹp) -> kéo dãn tương phản
+      const lumRange = Math.max(maxLum - minLum, 0.25);
+      let contrastStretch = 0.85 / lumRange;
+      contrastStretch = Math.max(Math.min(contrastStretch, 1.4), 0.85);
+
+      // 4. Chuẩn hóa độ rực màu cơ bản (Saturation Normalization):
+      // Đưa độ rực về mốc chuẩn ~0.32 trước khi áp bộ lọc màu
+      let satScale = 0.32 / Math.max(avgSat, 0.08);
+      satScale = Math.max(Math.min(satScale, 1.6), 0.65);
+
+      autoParams = {
+        exposureOffset: expCorrection,
+        rGain: rG,
+        gGain: gG,
+        bGain: bG,
+        contrastStretch: contrastStretch,
+        satScale: satScale
+      };
+
+      const bannerText = document.getElementById('auto-banner-text');
+      const diffStr = expCorrection > 0.05 ? `Bù sáng +${expCorrection.toFixed(1)}EV` : expCorrection < -0.05 ? `Giảm chói ${expCorrection.toFixed(1)}EV` : 'Ánh sáng cân đối';
+      bannerText.textContent = `✨ Đã chuẩn hóa ảnh gốc: ${diffStr} & cân bằng màu`;
+    }
+
+    // ==========================================
+    // GIAO DIỆN PRESET
+    // ==========================================
     const presetListEl = document.getElementById('preset-list');
     const presetDescEl = document.getElementById('preset-desc');
 
@@ -405,12 +534,12 @@
     function selectPreset(id) {
       currentPresetId = id;
       renderPresetList();
-      updateUniforms({ presetId: id });
+      render();
       updateSliderUI();
     }
 
     // ==========================================
-    // WEBGL SHADER ENGINE
+    // WEBGL SHADER ENGINE (ADAPTIVE TONE MAPPING)
     // ==========================================
     const canvas = document.getElementById('glcanvas');
     const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
@@ -429,6 +558,15 @@
       precision highp float;
       varying vec2 v_tex;
       uniform sampler2D u_image;
+      
+      // Tham số tự động chuẩn hóa
+      uniform float u_autoEnabled;
+      uniform float u_autoExposure;
+      uniform vec3 u_autoGain;
+      uniform float u_autoContrast;
+      uniform float u_autoSat;
+
+      // Tham số thủ công
       uniform int u_presetId;
       uniform float u_intensity;
       uniform float u_exposure;
@@ -451,15 +589,32 @@
       }
 
       void main() {
-        vec4 color = texture2D(u_image, v_tex);
+        vec4 rawColor = texture2D(u_image, v_tex);
         if (u_showOriginal > 0.5) {
-          gl_FragColor = color;
+          gl_FragColor = rawColor;
           return;
         }
 
-        vec3 orig = color.rgb;
-        vec3 c = color.rgb;
+        vec3 orig = rawColor.rgb;
+        vec3 c = rawColor.rgb;
 
+        // BƯỚC 1: CHUẨN HOÁ TỰ ĐỘNG (BẢO ĐẢM MỌI ẢNH ĐỀU ĐẠT CHUẨN ĐẦU VÀO)
+        if (u_autoEnabled > 0.5) {
+          // Triệt tiêu ám màu gốc bằng Gray-World gain
+          c = c * u_autoGain;
+          // Bù sáng tự động đưa về mốc chuẩn
+          c = c * pow(2.0, u_autoExposure);
+          // Kéo dãn tương phản tự nhiên
+          c = (c - 0.5) * u_autoContrast + 0.5;
+          c = clamp(c, 0.0, 1.0);
+          
+          // Chuẩn hóa độ bão hòa
+          vec3 hsvNorm = rgb2hsv(c);
+          hsvNorm.y = clamp(hsvNorm.y * u_autoSat, 0.0, 1.0);
+          c = hsv2rgb(hsvNorm);
+        }
+
+        // BƯỚC 2: TINH CHỈNH THỦ CÔNG CỦA NGƯỜI DÙNG (NẾU CÓ KÉO THANH TRƯỢT)
         c = c * pow(2.0, u_exposure * 1.2);
         c = (c - 0.5) * (1.0 + u_contrast * 0.5) + 0.5;
         c.r += u_temp * 0.08;
@@ -468,27 +623,39 @@
 
         vec3 target = c;
 
-        // 1. JAPAN SUMMER
+        // BƯỚC 3: ÁP DỤNG BẢNG MÀU MỤC TIÊU (TARGET COLOR GRADING)
+        // 1. JAPAN SUMMER (Mùa hè Nhật Bản / Makoto Shinkai)
         if (u_presetId == 0) {
+          // Nâng màng phim matte đen nhẹ
           c = 0.06 + 0.94 * pow(c, vec3(0.88));
           c.r += 0.03; c.g += 0.02;
+
           vec3 hsv = rgb2hsv(c);
-          if (hsv.x >= 0.52 && hsv.x <= 0.74) {
+
+          // Bầu trời: Dù ảnh gốc trời xanh đậm hay nhạt -> đều bẻ về Cyan/Aqua chuẩn (0.51)
+          if (hsv.x >= 0.50 && hsv.x <= 0.76) {
             float w = clamp(1.0 - abs(hsv.x - 0.63) / 0.13, 0.0, 1.0);
-            hsv.x = mix(hsv.x, 0.51, w * 0.8);
-            hsv.y = mix(hsv.y, hsv.y * 0.85, w);
-            hsv.z = clamp(hsv.z * (1.0 + w * 0.22), 0.0, 1.0);
+            hsv.x = mix(hsv.x, 0.51, w * 0.85); // Ép về chuẩn Cyan 185°
+            hsv.y = mix(hsv.y, 0.35, w * 0.5);  // Chuẩn hóa độ rực pastel
+            hsv.z = clamp(hsv.z * (1.0 + w * 0.25), 0.0, 1.0); // Bầu trời trong sáng
           }
-          if (hsv.x >= 0.19 && hsv.x <= 0.46) {
+
+          // Cây cối: Dù xanh thẫm hay úa -> đều bẻ về Xanh non vàng mạ (0.22)
+          if (hsv.x >= 0.18 && hsv.x <= 0.48) {
             float w = clamp(1.0 - abs(hsv.x - 0.33) / 0.15, 0.0, 1.0);
-            hsv.x = mix(hsv.x, 0.22, w * 0.55);
-            hsv.y = clamp(hsv.y * (1.0 + w * 0.25), 0.0, 1.0);
-            hsv.z = clamp(hsv.z * (1.0 + w * 0.32), 0.0, 1.0);
+            hsv.x = mix(hsv.x, 0.22, w * 0.65); // Ép về chuẩn xanh non anime
+            hsv.y = clamp(hsv.y * 1.25, 0.0, 1.0);
+            hsv.z = clamp(hsv.z * 1.25, 0.0, 1.0); // Cây cối phát sáng bắt nắng
           }
+
+          // Nắng ấm & Chi tiết nổi bật (Màu cam, đỏ, vàng)
           if (hsv.x <= 0.15 || hsv.x >= 0.90) {
-            hsv.y = clamp(hsv.y * 1.2, 0.0, 1.0);
+            hsv.y = clamp(hsv.y * 1.25, 0.0, 1.0);
           }
+
           c = hsv2rgb(hsv);
+
+          // Split toning: Cyan vùng tối, Vàng ấm vùng sáng
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
           c.b += clamp(1.0 - lum * 2.0, 0.0, 1.0) * 0.035;
           c.r += clamp(lum * 2.0 - 1.0, 0.0, 1.0) * 0.035;
@@ -499,16 +666,16 @@
           c = 0.04 + 0.96 * pow(c, vec3(0.92));
           c.r *= 1.08; c.g *= 1.03; c.b *= 0.92;
           vec3 hsv = rgb2hsv(c);
-          if (hsv.x >= 0.20 && hsv.x <= 0.45) { hsv.x = mix(hsv.x, 0.18, 0.4); hsv.y *= 0.85; }
-          if (hsv.x >= 0.05 && hsv.x <= 0.15) { hsv.y *= 1.15; }
+          if (hsv.x >= 0.20 && hsv.x <= 0.45) { hsv.x = mix(hsv.x, 0.18, 0.45); hsv.y *= 0.85; }
+          if (hsv.x >= 0.05 && hsv.x <= 0.15) { hsv.y *= 1.2; }
           target = hsv2rgb(hsv);
         }
         // 3. TEAL & ORANGE
         else if (u_presetId == 2) {
           c = smoothstep(0.0, 1.0, c);
           vec3 hsv = rgb2hsv(c);
-          if (hsv.x > 0.45 && hsv.x < 0.80) { hsv.x = 0.52; hsv.y = clamp(hsv.y * 1.3, 0.0, 1.0); }
-          if (hsv.x < 0.20 || hsv.x > 0.85) { hsv.x = 0.08; hsv.y = clamp(hsv.y * 1.35, 0.0, 1.0); }
+          if (hsv.x > 0.45 && hsv.x < 0.80) { hsv.x = 0.52; hsv.y = clamp(hsv.y * 1.35, 0.0, 1.0); }
+          if (hsv.x < 0.20 || hsv.x > 0.85) { hsv.x = 0.08; hsv.y = clamp(hsv.y * 1.4, 0.0, 1.0); }
           c = hsv2rgb(hsv);
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
           c.b += clamp(1.0 - lum * 1.8, 0.0, 1.0) * 0.07;
@@ -532,7 +699,7 @@
           c.r += 0.04; c.g += 0.02; c.b += 0.03;
           vec3 hsv = rgb2hsv(c);
           hsv.y *= 0.85;
-          hsv.z = clamp(hsv.z * 1.1, 0.0, 1.0);
+          hsv.z = clamp(hsv.z * 1.12, 0.0, 1.0);
           target = hsv2rgb(hsv);
         }
         // 6. NOIR B&W
@@ -543,7 +710,7 @@
         }
 
         target = clamp(target, 0.0, 1.0);
-        gl_FragColor = vec4(mix(orig, target, u_intensity), color.a);
+        gl_FragColor = vec4(mix(orig, target, u_intensity), rawColor.a);
       }
     `;
 
@@ -583,15 +750,21 @@
 
     let loadedImg = new Image();
     loadedImg.onload = function() {
+      // 1. Phân tích ảnh đầu vào và tự động tính toán các hệ số bù sáng/chuẩn hóa màu
+      analyzeAndNormalizeImage(loadedImg);
+
+      // 2. Đưa texture lên GPU
       canvas.width = loadedImg.width;
       canvas.height = loadedImg.height;
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.bindTexture(gl.TEXTURE_2D, texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, loadedImg);
       render();
+
       document.getElementById('empty-state').style.display = 'none';
       canvas.style.display = 'block';
       document.getElementById('controls').style.display = 'flex';
+      document.getElementById('auto-banner').style.display = 'flex';
       document.getElementById('btn-compare').style.display = 'block';
       document.getElementById('btn-save').style.display = 'block';
       document.getElementById('btn-pick').textContent = 'Đổi ảnh';
@@ -599,19 +772,29 @@
 
     function render() {
       if (!loadedImg.complete || !loadedImg.naturalWidth) return;
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_autoEnabled'), autoNormalEnabled ? 1.0 : 0.0);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_autoExposure'), autoParams.exposureOffset);
+      gl.uniform3f(gl.getUniformLocation(prog, 'u_autoGain'), autoParams.rGain, autoParams.gGain, autoParams.bGain);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_autoContrast'), autoParams.contrastStretch);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_autoSat'), autoParams.satScale);
+
       gl.uniform1i(gl.getUniformLocation(prog, 'u_presetId'), currentPresetId);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), params.intensity);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_exposure'), params.exposure);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_contrast'), params.contrast);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_temp'), params.temp);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_showOriginal'), params.showOriginal);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), manualParams.intensity);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_exposure'), manualParams.exposure);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_contrast'), manualParams.contrast);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_temp'), manualParams.temp);
+      gl.uniform1f(gl.getUniformLocation(prog, 'u_showOriginal'), manualParams.showOriginal);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    function updateUniforms(newVals) {
-      Object.assign(params, newVals);
+    // Nút Bật / Tắt chuẩn hóa thông minh
+    const btnToggleAuto = document.getElementById('btn-toggle-auto');
+    btnToggleAuto.onclick = function() {
+      autoNormalEnabled = !autoNormalEnabled;
+      btnToggleAuto.textContent = autoNormalEnabled ? 'BẬT' : 'TẮT';
+      btnToggleAuto.style.background = autoNormalEnabled ? '#27ae60' : '#555';
       render();
-    }
+    };
 
     // ==========================================
     // UI & SLIDER EVENT HANDLERS
@@ -625,26 +808,26 @@
       if (activeTab === 'intensity') {
         sliderTitleEl.textContent = `Độ đậm (${cur.name}):`;
         sliderEl.min = 0; sliderEl.max = 100;
-        sliderEl.value = Math.round(params.intensity * 100);
+        sliderEl.value = Math.round(manualParams.intensity * 100);
         sliderValEl.textContent = `${sliderEl.value}%`;
         sliderValEl.style.color = cur.color;
       } else if (activeTab === 'exposure') {
         sliderTitleEl.textContent = '☀️ Độ phơi sáng:';
         sliderEl.min = -60; sliderEl.max = 80;
-        sliderEl.value = Math.round(params.exposure * 100);
-        sliderValEl.textContent = params.exposure > 0 ? `+${params.exposure.toFixed(2)}` : params.exposure.toFixed(2);
+        sliderEl.value = Math.round(manualParams.exposure * 100);
+        sliderValEl.textContent = manualParams.exposure > 0 ? `+${manualParams.exposure.toFixed(2)}` : manualParams.exposure.toFixed(2);
         sliderValEl.style.color = '#f39c12';
       } else if (activeTab === 'contrast') {
         sliderTitleEl.textContent = '🌓 Độ tương phản:';
         sliderEl.min = -60; sliderEl.max = 80;
-        sliderEl.value = Math.round(params.contrast * 100);
+        sliderEl.value = Math.round(manualParams.contrast * 100);
         sliderValEl.textContent = sliderEl.value;
         sliderValEl.style.color = '#e74c3c';
       } else if (activeTab === 'temp') {
         sliderTitleEl.textContent = '🌡️ Nhiệt độ màu:';
         sliderEl.min = -40; sliderEl.max = 40;
-        sliderEl.value = Math.round(params.temp * 100);
-        sliderValEl.textContent = params.temp > 0 ? `Ấm +${params.temp.toFixed(2)}` : params.temp < 0 ? `Lạnh ${params.temp.toFixed(2)}` : '0';
+        sliderEl.value = Math.round(manualParams.temp * 100);
+        sliderValEl.textContent = manualParams.temp > 0 ? `Ấm +${manualParams.temp.toFixed(2)}` : manualParams.temp < 0 ? `Lạnh ${manualParams.temp.toFixed(2)}` : '0';
         sliderValEl.style.color = '#3498db';
       }
     }
@@ -652,20 +835,21 @@
     sliderEl.oninput = function() {
       const v = parseFloat(sliderEl.value);
       if (activeTab === 'intensity') {
-        updateUniforms({ intensity: v / 100.0 });
+        manualParams.intensity = v / 100.0;
         sliderValEl.textContent = `${sliderEl.value}%`;
       } else if (activeTab === 'exposure') {
         const val = v / 100.0;
-        updateUniforms({ exposure: val });
+        manualParams.exposure = val;
         sliderValEl.textContent = val > 0 ? `+${val.toFixed(2)}` : val.toFixed(2);
       } else if (activeTab === 'contrast') {
-        updateUniforms({ contrast: v / 100.0 });
+        manualParams.contrast = v / 100.0;
         sliderValEl.textContent = sliderEl.value;
       } else if (activeTab === 'temp') {
         const val = v / 100.0;
-        updateUniforms({ temp: val });
+        manualParams.temp = val;
         sliderValEl.textContent = val > 0 ? `Ấm +${val.toFixed(2)}` : val < 0 ? `Lạnh ${val.toFixed(2)}` : '0';
       }
+      render();
     };
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -678,7 +862,7 @@
     });
 
     // ==========================================
-    // CHỌN ẢNH & SO SÁNH & LƯU ẢNH IPHONE
+    // CHỌN ẢNH & SO SÁNH & LƯU ẢNH
     // ==========================================
     const fileInput = document.getElementById('file-input');
     document.getElementById('btn-pick').onclick = () => fileInput.click();
@@ -694,29 +878,28 @@
       }
     };
 
-    // Nhấn giữ so sánh ảnh gốc
     const btnCompare = document.getElementById('btn-compare');
     const startCompare = () => {
       btnCompare.classList.add('active');
       btnCompare.textContent = 'Ảnh Gốc';
-      updateUniforms({ showOriginal: 1.0 });
+      manualParams.showOriginal = 1.0;
+      render();
     };
     const endCompare = () => {
       btnCompare.classList.remove('active');
       btnCompare.textContent = 'Giữ xem gốc';
-      updateUniforms({ showOriginal: 0.0 });
+      manualParams.showOriginal = 0.0;
+      render();
     };
     btnCompare.addEventListener('mousedown', startCompare);
     btnCompare.addEventListener('mouseup', endCompare);
     btnCompare.addEventListener('touchstart', (e) => { e.preventDefault(); startCompare(); });
     btnCompare.addEventListener('touchend', endCompare);
 
-    // Lưu ảnh
     document.getElementById('btn-save').onclick = async function() {
       render();
       const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
       
-      // Thử dùng Web Share API của iOS (Lưu trực tiếp vào Album qua Share sheet)
       if (navigator.share && navigator.canShare) {
         try {
           const res = await fetch(dataUrl);
@@ -730,12 +913,9 @@
             });
             return;
           }
-        } catch (err) {
-          // Fallback sang modal
-        }
+        } catch (err) {}
       }
 
-      // Fallback: Mở modal để người dùng nhấn giữ Lưu ảnh vào Album
       document.getElementById('modal-img').src = dataUrl;
       document.getElementById('save-modal').classList.add('show');
     };
