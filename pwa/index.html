@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Bé Picture - Chỉnh Màu Thông Minh</title>
+  <title>Bé Picture - Chỉnh Màu Ảnh Mượt Mà</title>
   
-  <!-- Cấu hình PWA cho iOS iPhone -->
+  <!-- Cấu hình PWA cho iOS iPhone & Android -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Bé Picture">
@@ -112,7 +112,7 @@
       color: #2ecc71;
       font-size: 11px;
       font-weight: 600;
-      padding: 4px 16px;
+      padding: 5px 16px;
       justify-content: space-between;
       align-items: center;
     }
@@ -338,9 +338,9 @@
       </div>
     </header>
 
-    <!-- BANNER BÁO TRẠNG THÁI TỰ ĐỘNG CÂN BẰNG MÀU -->
+    <!-- BANNER BÁO TRẠNG THÁI -->
     <div id="auto-banner">
-      <span id="auto-banner-text">✨ Tự động nhận diện & chuẩn hóa màu</span>
+      <span id="auto-banner-text">✨ Tự động cân bằng sáng</span>
       <span class="auto-toggle" id="btn-toggle-auto">BẬT</span>
     </div>
 
@@ -348,9 +348,9 @@
     <main id="viewport">
       <div id="empty-state">
         <div class="empty-icon">📷</div>
-        <div class="empty-title">Chạm để chọn ảnh từ iPhone</div>
+        <div class="empty-title">Chạm để chọn ảnh cần chỉnh</div>
         <div class="empty-sub">
-          Tự động phân tích ánh sáng & chuẩn hóa về chuẩn màu Nhật Bản, dù ảnh gốc tối, sáng hay nhạt màu!
+          Màu sắc được chuyển đổi mượt mà, bảo vệ tông da và tường phòng không bao giờ bị loang lổ!
         </div>
       </div>
       <canvas id="glcanvas" style="display:none;"></canvas>
@@ -381,7 +381,7 @@
 
   <input type="file" id="file-input" accept="image/*" style="display:none;">
 
-  <!-- MODAL HƯỚNG DẪN LƯU VÀO ALBUM IPHONE -->
+  <!-- MODAL HƯỚNG DẪN LƯU VÀO ALBUM -->
   <div id="save-modal">
     <div class="modal-tip">🎉 ĐÃ TẠO ẢNH CHẤT LƯỢNG CAO!</div>
     <img id="modal-img" src="" alt="Edited Photo">
@@ -395,7 +395,7 @@
     }
 
     const PRESETS = [
-      { id: 0, tag: '🇯🇵 Mùa hè Nhật', name: 'Japan Summer', desc: 'Trời xanh ngọc Cyan, cây xanh non Anime, nắng ấm Makoto Shinkai', color: '#00c0ff' },
+      { id: 0, tag: '🇯🇵 Mùa hè Nhật', name: 'Japan Summer', desc: 'Trời xanh ngọc Cyan, cây xanh non Anime, nắng ấm dịu dàng', color: '#00c0ff' },
       { id: 1, tag: '🎞️ Màu Phim Cổ', name: 'Kodak Portra', desc: 'Tone vàng kim ấm áp hoài niệm, da ấm, chất phim cổ điển', color: '#f39c12' },
       { id: 2, tag: '🎬 Điện Ảnh Cyber', name: 'Teal & Orange', desc: 'Điện ảnh Hollywood: bóng xanh biển sâu, ánh sáng cam rực rỡ', color: '#00e5ff' },
       { id: 3, tag: '🌲 Rừng Thông Lạnh', name: 'Moody Forest', desc: 'Tone trầm u tối, cây lá xanh rêu trầm, tĩnh lặng và bí ẩn', color: '#27ae60' },
@@ -407,7 +407,6 @@
     let activeTab = 'intensity';
     let autoNormalEnabled = true;
 
-    // Các thông số tinh chỉnh thủ công
     let manualParams = {
       intensity: 1.0,
       exposure: 0.0,
@@ -416,18 +415,12 @@
       showOriginal: 0.0
     };
 
-    // Các thông số tự động đo lường từ ảnh đầu vào
     let autoParams = {
-      exposureOffset: 0.0,
-      rGain: 1.0,
-      gGain: 1.0,
-      bGain: 1.0,
-      contrastStretch: 1.0,
-      satScale: 1.0
+      exposureOffset: 0.0
     };
 
     // ==========================================
-    // BỘ PHÂN TÍCH ẢNH THÔNG MINH (COLOR NORMALIZATION)
+    // PHÂN TÍCH ĐỘ SÁNG MƯỢT MÀ (KHÔNG PHÁ MÀU GỐC)
     // ==========================================
     function analyzeAndNormalizeImage(img) {
       const sampleCanvas = document.createElement('canvas');
@@ -438,77 +431,31 @@
       sCtx.drawImage(img, 0, 0, size, size);
       const imgData = sCtx.getImageData(0, 0, size, size).data;
 
-      let totalLum = 0, totalR = 0, totalG = 0, totalB = 0, totalSat = 0;
-      let minLum = 1.0, maxLum = 0.0;
+      let totalLum = 0;
       const count = size * size;
 
       for (let i = 0; i < imgData.length; i += 4) {
         const r = imgData[i] / 255.0;
         const g = imgData[i+1] / 255.0;
         const b = imgData[i+2] / 255.0;
-
-        totalR += r;
-        totalG += g;
-        totalB += b;
-
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        totalLum += lum;
-        if (lum < minLum) minLum = lum;
-        if (lum > maxLum) maxLum = lum;
-
-        const maxC = Math.max(r, g, b);
-        const minC = Math.min(r, g, b);
-        const sat = maxC === 0 ? 0 : (maxC - minC) / maxC;
-        totalSat += sat;
+        totalLum += 0.299 * r + 0.587 * g + 0.114 * b;
       }
 
       const avgLum = totalLum / count;
-      const avgR = totalR / count;
-      const avgG = totalG / count;
-      const avgB = totalB / count;
-      const avgSat = totalSat / count;
-      const grayAvg = (avgR + avgG + avgB) / 3.0;
-
-      // 1. Tự động bù sáng (Auto Exposure Normalization):
-      // Đưa độ sáng trung bình của mọi ảnh về mốc chuẩn chuẩn phim Nhật ~0.46
-      // Nếu ảnh quá tối (avgLum = 0.2) -> tự tăng sáng ~1.2 EV
-      // Nếu ảnh quá chói (avgLum = 0.75) -> tự dìm sáng xuống ~ -0.7 EV
-      const targetLum = 0.46;
-      let expCorrection = Math.log2(targetLum / Math.max(avgLum, 0.06));
-      expCorrection = Math.max(Math.min(expCorrection, 1.4), -1.1);
-
-      // 2. Cân bằng trắng Gray-World (Triệt tiêu ám vàng đèn phòng hoặc ám xanh lạnh):
-      let rG = grayAvg / Math.max(avgR, 0.05);
-      let gG = grayAvg / Math.max(avgG, 0.05);
-      let bG = grayAvg / Math.max(avgB, 0.05);
-      // Giữ cho cân bằng trắng tự nhiên, không biến đổi quá gắt
-      rG = Math.max(Math.min(rG, 1.35), 0.75);
-      gG = Math.max(Math.min(gG, 1.35), 0.75);
-      bG = Math.max(Math.min(bG, 1.35), 0.75);
-
-      // 3. Tự động căng dải tương phản (Dynamic Range Stretch):
-      // Nếu ảnh đục/nhạt nhoà (dải sáng hẹp) -> kéo dãn tương phản
-      const lumRange = Math.max(maxLum - minLum, 0.25);
-      let contrastStretch = 0.85 / lumRange;
-      contrastStretch = Math.max(Math.min(contrastStretch, 1.4), 0.85);
-
-      // 4. Chuẩn hóa độ rực màu cơ bản (Saturation Normalization):
-      // Đưa độ rực về mốc chuẩn ~0.32 trước khi áp bộ lọc màu
-      let satScale = 0.32 / Math.max(avgSat, 0.08);
-      satScale = Math.max(Math.min(satScale, 1.6), 0.65);
+      const targetLum = 0.45;
+      let expCorrection = Math.log2(targetLum / Math.max(avgLum, 0.08));
+      expCorrection = Math.max(Math.min(expCorrection, 0.65), -0.5);
 
       autoParams = {
-        exposureOffset: expCorrection,
-        rGain: rG,
-        gGain: gG,
-        bGain: bG,
-        contrastStretch: contrastStretch,
-        satScale: satScale
+        exposureOffset: expCorrection
       };
 
       const bannerText = document.getElementById('auto-banner-text');
-      const diffStr = expCorrection > 0.05 ? `Bù sáng +${expCorrection.toFixed(1)}EV` : expCorrection < -0.05 ? `Giảm chói ${expCorrection.toFixed(1)}EV` : 'Ánh sáng cân đối';
-      bannerText.textContent = `✨ Đã chuẩn hóa ảnh gốc: ${diffStr} & cân bằng màu`;
+      if (Math.abs(expCorrection) > 0.08) {
+        bannerText.textContent = `✨ Tự động bù sáng: ${expCorrection > 0 ? '+' : ''}${expCorrection.toFixed(2)} EV`;
+      } else {
+        bannerText.textContent = `✨ Ánh sáng ảnh gốc đã chuẩn, sẵn sàng áp màu`;
+      }
     }
 
     // ==========================================
@@ -539,7 +486,7 @@
     }
 
     // ==========================================
-    // WEBGL SHADER ENGINE (ADAPTIVE TONE MAPPING)
+    // WEBGL SHADER CHUYÊN NGHIỆP (KHÔNG LOANG LỔ, BẢO VỆ TƯỜNG & DA)
     // ==========================================
     const canvas = document.getElementById('glcanvas');
     const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
@@ -559,14 +506,9 @@
       varying vec2 v_tex;
       uniform sampler2D u_image;
       
-      // Tham số tự động chuẩn hóa
       uniform float u_autoEnabled;
       uniform float u_autoExposure;
-      uniform vec3 u_autoGain;
-      uniform float u_autoContrast;
-      uniform float u_autoSat;
 
-      // Tham số thủ công
       uniform int u_presetId;
       uniform float u_intensity;
       uniform float u_exposure;
@@ -588,6 +530,15 @@
         return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
       }
 
+      float hueDist(float h1, float h2) {
+        float d = abs(h1 - h2);
+        return min(d, 1.0 - d);
+      }
+
+      float hueWeight(float h, float center, float width) {
+        return smoothstep(width, 0.0, hueDist(h, center));
+      }
+
       void main() {
         vec4 rawColor = texture2D(u_image, v_tex);
         if (u_showOriginal > 0.5) {
@@ -598,115 +549,102 @@
         vec3 orig = rawColor.rgb;
         vec3 c = rawColor.rgb;
 
-        // BƯỚC 1: CHUẨN HOÁ TỰ ĐỘNG (BẢO ĐẢM MỌI ẢNH ĐỀU ĐẠT CHUẨN ĐẦU VÀO)
+        // 1. Bù sáng tự động mượt mà
         if (u_autoEnabled > 0.5) {
-          // Triệt tiêu ám màu gốc bằng Gray-World gain
-          c = c * u_autoGain;
-          // Bù sáng tự động đưa về mốc chuẩn
           c = c * pow(2.0, u_autoExposure);
-          // Kéo dãn tương phản tự nhiên
-          c = (c - 0.5) * u_autoContrast + 0.5;
-          c = clamp(c, 0.0, 1.0);
-          
-          // Chuẩn hóa độ bão hòa
-          vec3 hsvNorm = rgb2hsv(c);
-          hsvNorm.y = clamp(hsvNorm.y * u_autoSat, 0.0, 1.0);
-          c = hsv2rgb(hsvNorm);
         }
 
-        // BƯỚC 2: TINH CHỈNH THỦ CÔNG CỦA NGƯỜI DÙNG (NẾU CÓ KÉO THANH TRƯỢT)
+        // 2. Phơi sáng & Tương phản thủ công
         c = c * pow(2.0, u_exposure * 1.2);
-        c = (c - 0.5) * (1.0 + u_contrast * 0.5) + 0.5;
-        c.r += u_temp * 0.08;
-        c.b -= u_temp * 0.08;
+        c = (c - 0.5) * (1.0 + u_contrast * 0.4) + 0.5;
+        c.r += u_temp * 0.06;
+        c.b -= u_temp * 0.06;
         c = clamp(c, 0.0, 1.0);
 
         vec3 target = c;
 
-        // BƯỚC 3: ÁP DỤNG BẢNG MÀU MỤC TIÊU (TARGET COLOR GRADING)
-        // 1. JAPAN SUMMER (Mùa hè Nhật Bản / Makoto Shinkai)
+        // ==========================================================
+        // PRESET 0: JAPAN SUMMER (CHUẨN LIGHTROOM, MƯỢT MÀ 100%)
+        // ==========================================================
         if (u_presetId == 0) {
-          // Nâng màng phim matte đen nhẹ
-          c = 0.06 + 0.94 * pow(c, vec3(0.88));
-          c.r += 0.03; c.g += 0.02;
+          // Đường cong phim mờ nhẹ nhàng, không cháy sáng
+          c = 0.04 + 0.96 * pow(c, vec3(0.92));
 
           vec3 hsv = rgb2hsv(c);
 
-          // Bầu trời: Dù ảnh gốc trời xanh đậm hay nhạt -> đều bẻ về Cyan/Aqua chuẩn (0.51)
-          if (hsv.x >= 0.50 && hsv.x <= 0.76) {
-            float w = clamp(1.0 - abs(hsv.x - 0.63) / 0.13, 0.0, 1.0);
-            hsv.x = mix(hsv.x, 0.51, w * 0.85); // Ép về chuẩn Cyan 185°
-            hsv.y = mix(hsv.y, 0.35, w * 0.5);  // Chuẩn hóa độ rực pastel
-            hsv.z = clamp(hsv.z * (1.0 + w * 0.25), 0.0, 1.0); // Bầu trời trong sáng
-          }
+          // BẢO VỆ VÙNG TRẮNG, XÁM, TƯỜNG PHÒNG, TRẦN NHÀ:
+          // Chỉ áp dụng đổi màu lên pixel có độ bão hòa thật sự (Saturation > 0.15)
+          float satGate = smoothstep(0.12, 0.28, hsv.y);
 
-          // Cây cối: Dù xanh thẫm hay úa -> đều bẻ về Xanh non vàng mạ (0.22)
-          if (hsv.x >= 0.18 && hsv.x <= 0.48) {
-            float w = clamp(1.0 - abs(hsv.x - 0.33) / 0.15, 0.0, 1.0);
-            hsv.x = mix(hsv.x, 0.22, w * 0.65); // Ép về chuẩn xanh non anime
-            hsv.y = clamp(hsv.y * 1.25, 0.0, 1.0);
-            hsv.z = clamp(hsv.z * 1.25, 0.0, 1.0); // Cây cối phát sáng bắt nắng
-          }
+          // [BẦU TRỜI]: Blue (0.61) bẻ mượt về Cyan (0.51)
+          float skyW = hueWeight(hsv.x, 0.61, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.51, skyW * 0.75);
+          hsv.y = mix(hsv.y, hsv.y * 0.88, skyW);
 
-          // Nắng ấm & Chi tiết nổi bật (Màu cam, đỏ, vàng)
-          if (hsv.x <= 0.15 || hsv.x >= 0.90) {
-            hsv.y = clamp(hsv.y * 1.25, 0.0, 1.0);
-          }
+          // [CÂY CỎ]: Green (0.33) bẻ mượt về Xanh non vàng ấm (0.22)
+          float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.22, greenW * 0.60);
+          hsv.y = clamp(hsv.y * (1.0 + greenW * 0.22), 0.0, 1.0);
+
+          // [MÀU ẤM NẮNG]:
+          float warmW = hueWeight(hsv.x, 0.08, 0.14) * satGate;
+          hsv.y = clamp(hsv.y * (1.0 + warmW * 0.15), 0.0, 1.0);
 
           c = hsv2rgb(hsv);
 
-          // Split toning: Cyan vùng tối, Vàng ấm vùng sáng
+          // Split Toning mượt mà theo độ sáng:
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
-          c.b += clamp(1.0 - lum * 2.0, 0.0, 1.0) * 0.035;
-          c.r += clamp(lum * 2.0 - 1.0, 0.0, 1.0) * 0.035;
+          c.b += (1.0 - lum) * 0.035;
+          c.g += (1.0 - lum) * 0.015;
+          c.r += lum * 0.025;
+          c.g += lum * 0.015;
+
           target = c;
         }
-        // 2. KODAK PORTRA
+        // PRESET 1: KODAK PORTRA
         else if (u_presetId == 1) {
-          c = 0.04 + 0.96 * pow(c, vec3(0.92));
-          c.r *= 1.08; c.g *= 1.03; c.b *= 0.92;
+          c = 0.03 + 0.97 * pow(c, vec3(0.94));
+          c.r *= 1.05; c.g *= 1.02; c.b *= 0.94;
           vec3 hsv = rgb2hsv(c);
-          if (hsv.x >= 0.20 && hsv.x <= 0.45) { hsv.x = mix(hsv.x, 0.18, 0.45); hsv.y *= 0.85; }
-          if (hsv.x >= 0.05 && hsv.x <= 0.15) { hsv.y *= 1.2; }
+          float satGate = smoothstep(0.12, 0.25, hsv.y);
+          float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.20, greenW * 0.4);
+          hsv.y *= (1.0 - greenW * 0.15);
           target = hsv2rgb(hsv);
         }
-        // 3. TEAL & ORANGE
+        // PRESET 2: TEAL & ORANGE
         else if (u_presetId == 2) {
           c = smoothstep(0.0, 1.0, c);
-          vec3 hsv = rgb2hsv(c);
-          if (hsv.x > 0.45 && hsv.x < 0.80) { hsv.x = 0.52; hsv.y = clamp(hsv.y * 1.35, 0.0, 1.0); }
-          if (hsv.x < 0.20 || hsv.x > 0.85) { hsv.x = 0.08; hsv.y = clamp(hsv.y * 1.4, 0.0, 1.0); }
-          c = hsv2rgb(hsv);
           float lum = dot(c, vec3(0.299, 0.587, 0.114));
-          c.b += clamp(1.0 - lum * 1.8, 0.0, 1.0) * 0.07;
-          c.g += clamp(1.0 - lum * 1.8, 0.0, 1.0) * 0.03;
-          c.r += clamp(lum * 1.8 - 0.8, 0.0, 1.0) * 0.06;
+          c.b += (1.0 - lum) * 0.06;
+          c.g += (1.0 - lum) * 0.025;
+          c.r += lum * 0.05;
           target = c;
         }
-        // 4. MOODY FOREST
+        // PRESET 3: MOODY FOREST
         else if (u_presetId == 3) {
-          c = pow(c, vec3(1.15));
+          c = pow(c, vec3(1.1));
           vec3 hsv = rgb2hsv(c);
-          if (hsv.x >= 0.18 && hsv.x <= 0.48) { hsv.x = 0.38; hsv.y *= 0.65; hsv.z *= 0.85; }
-          if (hsv.x >= 0.12 && hsv.x < 0.20) { hsv.y *= 0.4; }
+          float satGate = smoothstep(0.12, 0.25, hsv.y);
+          float greenW = hueWeight(hsv.x, 0.33, 0.16) * satGate;
+          hsv.x = mix(hsv.x, 0.38, greenW * 0.5);
+          hsv.y *= (1.0 - greenW * 0.3);
           c = hsv2rgb(hsv);
-          c.b += 0.03;
+          c.b += 0.025;
           target = c;
         }
-        // 5. KOREAN PASTEL
+        // PRESET 4: KOREAN PASTEL
         else if (u_presetId == 4) {
-          c = 0.08 + 0.92 * pow(c, vec3(0.82));
-          c.r += 0.04; c.g += 0.02; c.b += 0.03;
+          c = 0.06 + 0.94 * pow(c, vec3(0.86));
+          c.r += 0.03; c.b += 0.02;
           vec3 hsv = rgb2hsv(c);
-          hsv.y *= 0.85;
-          hsv.z = clamp(hsv.z * 1.12, 0.0, 1.0);
+          hsv.y *= 0.88;
           target = hsv2rgb(hsv);
         }
-        // 6. NOIR B&W
+        // PRESET 5: NOIR B&W
         else if (u_presetId == 5) {
           float gray = dot(c, vec3(0.299, 0.587, 0.114));
-          gray = smoothstep(0.08, 0.92, gray);
-          target = vec3(gray);
+          target = vec3(smoothstep(0.06, 0.94, gray));
         }
 
         target = clamp(target, 0.0, 1.0);
@@ -750,10 +688,8 @@
 
     let loadedImg = new Image();
     loadedImg.onload = function() {
-      // 1. Phân tích ảnh đầu vào và tự động tính toán các hệ số bù sáng/chuẩn hóa màu
       analyzeAndNormalizeImage(loadedImg);
 
-      // 2. Đưa texture lên GPU
       canvas.width = loadedImg.width;
       canvas.height = loadedImg.height;
       gl.viewport(0, 0, canvas.width, canvas.height);
@@ -774,9 +710,6 @@
       if (!loadedImg.complete || !loadedImg.naturalWidth) return;
       gl.uniform1f(gl.getUniformLocation(prog, 'u_autoEnabled'), autoNormalEnabled ? 1.0 : 0.0);
       gl.uniform1f(gl.getUniformLocation(prog, 'u_autoExposure'), autoParams.exposureOffset);
-      gl.uniform3f(gl.getUniformLocation(prog, 'u_autoGain'), autoParams.rGain, autoParams.gGain, autoParams.bGain);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_autoContrast'), autoParams.contrastStretch);
-      gl.uniform1f(gl.getUniformLocation(prog, 'u_autoSat'), autoParams.satScale);
 
       gl.uniform1i(gl.getUniformLocation(prog, 'u_presetId'), currentPresetId);
       gl.uniform1f(gl.getUniformLocation(prog, 'u_intensity'), manualParams.intensity);
@@ -787,7 +720,6 @@
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    // Nút Bật / Tắt chuẩn hóa thông minh
     const btnToggleAuto = document.getElementById('btn-toggle-auto');
     btnToggleAuto.onclick = function() {
       autoNormalEnabled = !autoNormalEnabled;
@@ -796,9 +728,6 @@
       render();
     };
 
-    // ==========================================
-    // UI & SLIDER EVENT HANDLERS
-    // ==========================================
     const sliderEl = document.getElementById('active-slider');
     const sliderTitleEl = document.getElementById('slider-title');
     const sliderValEl = document.getElementById('slider-val');
@@ -861,9 +790,6 @@
       };
     });
 
-    // ==========================================
-    // CHỌN ẢNH & SO SÁNH & LƯU ẢNH
-    // ==========================================
     const fileInput = document.getElementById('file-input');
     document.getElementById('btn-pick').onclick = () => fileInput.click();
     document.getElementById('empty-state').onclick = () => fileInput.click();
